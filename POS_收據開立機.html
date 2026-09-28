@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>POS 收據開立機</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Courier+Prime:wght@400;700&display=swap" rel="stylesheet">
+    <!-- html2canvas and jsPDF for reliable PDF generation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .receipt-font {
+            font-family: 'Courier Prime', monospace;
+        }
+        @media print {
+            body * {
+                visibility: hidden;
+            }
+            #receipt-printable, #receipt-printable * {
+                visibility: visible;
+            }
+            #receipt-printable {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+                box-shadow: none !important;
+                margin: 0 !important;
+                padding: 10px !important;
+                background-color: white !important;
+            }
+            .no-print {
+                display: none !important;
+            }
+        }
+    </style>
+</head>
+<body class="bg-slate-100 text-slate-800 min-h-screen flex flex-col">
+
+    <header class="bg-slate-900 text-white shadow-md no-print">
+        <div class="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
+            <div class="flex items-center space-x-3">
+                <div class="bg-indigo-600 p-2 rounded-xl text-white">
+                    <i class="fa-solid fa-receipt text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold tracking-tight">POS 智慧收據開立機</h1>
+                    <p class="text-xs text-slate-400">快速建立專業收據並輸出 PDF 或列印</p>
+                </div>
+            </div>
+            <div class="text-xs bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-700 text-slate-300">
+                <i class="fa-regular fa-clock mr-1"></i> <span id="current-time-display">載入中...</span>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-grow max-w-7xl w-full mx-auto p-4 md:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        <!-- Left Panel: Form Control -->
+        <div class="lg:col-span-7 bg-white rounded-2xl shadow-sm border border-slate-200 p-5 md:p-6 flex flex-col justify-between no-print">
+            <div class="space-y-6">
+                
+                <!-- Section 1: Basic Information -->
+                <div>
+                    <h2 class="text-sm font-semibold text-slate-900 uppercase tracking-wider mb-3 flex items-center">
+                        <i class="fa-solid fa-store text-indigo-600 mr-2"></i> 店家與交易基本資訊
+                    </h2>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-medium text-slate-600 mb-1">店家名稱</label>
+                            <input type="text" id="store-name" value="星際咖啡館信義店" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none transition">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-slate-600 mb-1">店家統一編號 / 電話</label>
+                            <input type="text" id="store-info" value="統編: 12345678 / 電話: 02-23456789" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none transition">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-slate-600 mb-1">顧客代號 / 名稱</label>
+                            <input type="text" id="customer-id" value="CUST-8899" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none transition">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-slate-600 mb-1">收銀員名稱</label>
+                            <input type="text" id="cashier-name" value="陳小美 (Cashier #03)" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none transition">
+                        </div>
+                    </div>
+                </div>
+
+                <hr class="border-slate-100">
+
+                <!-- Section 2: Items List -->
+                <div>
+                    <div class="flex justify-between items-center mb-3">
+                        <h2 class="text-sm font-semibold text-slate-900 uppercase tracking-wider flex items-center">
+                            <i class="fa-solid fa-basket-shopping text-indigo-600 mr-2"></i> 購買品項明細
+                        </h2>
+                        <button onclick="addItemRow()" class="text-xs bg-indigo-50 text-indigo-600 hover:bg-indigo-100 font-medium px-3 py-1.5 rounded-lg transition flex items-center">
+                            <i class="fa-solid fa-plus mr-1"></i> 新增品項
+                        </button>
+                    </div>
+
+                    <div class="space-y-3 max-h-[300px] overflow-y-auto pr-1" id="items-container">
+                        <!-- Dynamic items will be inserted here -->
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Bottom Actions -->
+            <div class="mt-6 pt-4 border-t border-slate-100 flex flex-wrap gap-3 justify-end">
+                <button onclick="resetForm()" class="px-4 py-2 text-sm font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition">
+                    <i class="fa-solid fa-rotate-right mr-1"></i> 重設表單
+                </button>
+                <button onclick="printReceipt()" class="px-4 py-2 text-sm font-medium text-white bg-slate-800 hover:bg-slate-900 rounded-lg shadow-sm transition flex items-center">
+                    <i class="fa-solid fa-print mr-2"></i> 直接列印
+                </button>
+                <button onclick="downloadPDF()" class="px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow-sm transition flex items-center">
+                    <i class="fa-solid fa-file-pdf mr-2"></i> 生成 PDF
+                </button>
+            </div>
+        </div>
+
+        <!-- Right Panel: POS Receipt Preview -->
+        <div class="lg:col-span-5 flex flex-col items-center justify-start">
+            <div class="w-full max-w-sm sticky top-6">
+                <div class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2 flex items-center justify-between no-print">
+                    <span>收據預覽 (熱感應風格)</span>
+                    <span class="text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded text-[10px] font-bold">即時更新</span>
+                </div>
+
+                <!-- Printable Receipt Container -->
+                <div id="receipt-printable" class="bg-white text-slate-900 p-6 rounded-xl shadow-xl border border-slate-200 receipt-font text-xs relative overflow-hidden">
+                    <!-- Thermal paper decorative top edge -->
+                    <div class="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-slate-200 via-slate-300 to-slate-200"></div>
+
+                    <!-- Store Header -->
+                    <div class="text-center pb-3 border-b border-dashed border-slate-300">
+                        <h2 id="preview-store-name" class="text-base font-bold tracking-wide">星際咖啡館信義店</h2>
+                        <p id="preview-store-info" class="text-[11px] text-slate-600 mt-0.5">統編: 12345678 / 電話: 02-23456789</p>
+                        <p class="text-[10px] text-slate-500 mt-1 uppercase">★ 統一發票 / 銷貨明細收據 ★</p>
+                    </div>
+
+                    <!-- Transaction Meta -->
+                    <div class="py-2.5 border-b border-dashed border-slate-300 text-[11px] space-y-1 text-slate-700">
+                        <div class="flex justify-between">
+                            <span>單號: <strong id="preview-receipt-no" class="text-slate-900">RCP-20260330-001</strong></span>
+                            <span id="preview-date">2026-03-30 14:30</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span>顧客代號: <strong id="preview-customer" class="text-slate-900">CUST-8899</strong></span>
+                            <span>收銀員: <strong id="preview-cashier" class="text-slate-900">陳小美</strong></span>
+                        </div>
+                    </div>
+
+                    <!-- Items Table -->
+                    <div class="py-3 border-b border-dashed border-slate-300">
+                        <table class="w-full text-left">
+                            <thead>
+                                <tr class="border-b border-slate-300 text-[10px] text-slate-500">
+                                    <th class="pb-1 font-semibold w-5/12">品項</th>
+                                    <th class="pb-1 font-semibold text-center w-2/12">數量</th>
+                                    <th class="pb-1 font-semibold text-right w-2/12">單價</th>
+                                    <th class="pb-1 font-semibold text-right w-3/12">小計</th>
+                                </tr>
+                            </thead>
+                            <tbody id="preview-items-body" class="divide-y divide-slate-100">
+                                <!-- Rendered items -->
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Totals Calculation -->
+                    <div class="py-3 border-b border-dashed border-slate-300 space-y-1 text-[11px]">
+                        <div class="flex justify-between text-slate-600">
+                            <span>銷售額合計 (未稅):</span>
+                            <span id="preview-subtotal">NT$ 0</span>
+                        </div>
+                        <div class="flex justify-between text-slate-600">
+                            <span>營業稅 (5%):</span>
+                            <span id="preview-tax">NT$ 0</span>
+                        </div>
+                        <div class="flex justify-between font-bold text-sm text-slate-900 pt-1">
+                            <span>總計 (Total):</span>
+                            <span id="preview-total" class="text-indigo-600">NT$ 0</span>
+                        </div>
+                    </div>
+
+                    <!-- Footer Message -->
+                    <div class="text-center pt-4 text-[10px] text-slate-500 space-y-1">
+                        <p>謝謝您的光臨，祝您順心如意！</p>
+                        <p class="text-[9px] text-slate-400">本收據由 POS 智慧系統自動產生</p>
+                        <div class="mt-2 text-lg tracking-widest text-slate-400">||| ||||| |||| |||||</div>
+                    </div>
+
+                    <!-- Thermal paper decorative bottom edge -->
+                    <div class="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-slate-200 via-slate-300 to-slate-200"></div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <script>
+        let receiptCounter = Math.floor(Math.random() * 900) + 100;
+        let receiptDateStr = '';
+
+        function generateReceiptNo() {
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const day = String(now.getDate()).padStart(2, '0');
+            receiptDateStr = `${year}-${month}-${day} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
+            return `RCP-${year}${month}${day}-${receiptCounter}`;
+        }
+
+        const currentReceiptNo = generateReceiptNo();
+
+        let items = [
+            { name: '特選拿鐵咖啡 (大杯)', qty: 2, price: 150 },
+            { name: '法式手工可頌', qty: 1, price: 85 },
+            { name: '經典提拉米蘇', qty: 1, price: 120 }
+        ];
+
+        const itemsContainer = document.getElementById('items-container');
+        const previewItemsBody = document.getElementById('preview-items-body');
+        const storeNameInput = document.getElementById('store-name');
+        const storeInfoInput = document.getElementById('store-info');
+        const customerIdInput = document.getElementById('customer-id');
+        const cashierNameInput = document.getElementById('cashier-name');
+
+        function initApp() {
+            document.getElementById('preview-receipt-no').innerText = currentReceiptNo;
+            document.getElementById('preview-date').innerText = receiptDateStr;
+            document.getElementById('current-time-display').innerText = receiptDateStr;
+            renderItems();
+            setupEventListeners();
+        }
+
+        function setupEventListeners() {
+            const inputs = [storeNameInput, storeInfoInput, customerIdInput, cashierNameInput];
+            inputs.forEach(input => {
+                input.addEventListener('input', updatePreviewHeader);
+            });
+        }
+
+        function updatePreviewHeader() {
+            document.getElementById('preview-store-name').innerText = storeNameInput.value || '未命名店家';
+            document.getElementById('preview-store-info').innerText = storeInfoInput.value;
+            document.getElementById('preview-customer').innerText = customerIdInput.value || '一般顧客';
+            document.getElementById('preview-cashier').innerText = cashierNameInput.value;
+        }
+
+        function renderItems() {
+            itemsContainer.innerHTML = '';
+            previewItemsBody.innerHTML = '';
+
+            let subtotalAmount = 0;
+
+            items.forEach((item, index) => {
+                const itemTotal = item.qty * item.price;
+                subtotalAmount += itemTotal;
+
+                const row = document.createElement('div');
+                row.className = 'flex items-center gap-2 bg-slate-50 p-2.5 rounded-xl border border-slate-200';
+                row.innerHTML = `
+                    <div class="flex-grow">
+                        <input type="text" value="${item.name}" placeholder="品項名稱" oninput="updateItem(${index}, 'name', this.value)" class="w-full px-2.5 py-1.5 text-xs border border-slate-300 rounded-lg focus:ring-1 focus:ring-indigo-500 focus:outline-none bg-white">
+                    </div>
+                    <div class="w-16">
+                        <input type="number" min="1" value="${item.qty}" placeholder="數量" oninput="updateItem(${index}, 'qty', this.value)" class="w-full px-2 py-1.5 text-xs border border-slate-300 rounded-lg focus:ring-1 focus:ring-indigo-500 focus:outline-none bg-white text-center">
+                    </div>
+                    <div class="w-20">
+                        <input type="number" min="0" value="${item.price}" placeholder="單價" oninput="updateItem(${index}, 'price', this.value)" class="w-full px-2 py-1.5 text-xs border border-slate-300 rounded-lg focus:ring-1 focus:ring-indigo-500 focus:outline-none bg-white text-right">
+                    </div>
+                    <button onclick="removeItem(${index})" class="text-slate-400 hover:text-red-500 p-1.5 transition rounded-lg hover:bg-red-50" title="刪除品項">
+                        <i class="fa-solid fa-trash-can text-xs"></i>
+                    </button>
+                `;
+                itemsContainer.appendChild(row);
+
+                const previewRow = document.createElement('tr');
+                previewRow.innerHTML = `
+                    <td class="py-1.5 pr-2 truncate max-w-[120px]">${item.name || '(未命名品項)'}</td>
+                    <td class="py-1.5 text-center">${item.qty}</td>
+                    <td class="py-1.5 text-right">$${Number(item.price).toLocaleString()}</td>
+                    <td class="py-1.5 text-right font-semibold">$${Number(itemTotal).toLocaleString()}</td>
+                `;
+                previewItemsBody.appendChild(previewRow);
+            });
+
+            const taxAmount = Math.round(subtotalAmount * 0.05);
+            const totalAmount = subtotalAmount;
+
+            document.getElementById('preview-subtotal').innerText = `NT$ ${subtotalAmount.toLocaleString()}`;
+            document.getElementById('preview-tax').innerText = `NT$ ${taxAmount.toLocaleString()}`;
+            document.getElementById('preview-total').innerText = `NT$ ${totalAmount.toLocaleString()}`;
+        }
+
+        function addItemRow() {
+            items.push({ name: '', qty: 1, price: 0 });
+            renderItems();
+        }
+
+        function updateItem(index, field, value) {
+            if (field === 'qty' || field === 'price') {
+                items[index][field] = Number(value) < 0 ? 0 : Number(value);
+            } else {
+                items[index][field] = value;
+            }
+            renderItems();
+        }
+
+        function removeItem(index) {
+            if (items.length <= 1) {
+                alert('收據至少需要保留一筆購買品項');
+                return;
+            }
+            items.splice(index, 1);
+            renderItems();
+        }
+
+        function resetForm() {
+            storeNameInput.value = '星際咖啡館信義店';
+            storeInfoInput.value = '統編: 12345678 / 電話: 02-23456789';
+            customerIdInput.value = 'CUST-8899';
+            cashierNameInput.value = '陳小美';
+            items = [
+                { name: '特選拿鐵咖啡 (大杯)', qty: 2, price: 150 },
+                { name: '法式手工可頌', qty: 1, price: 85 }
+            ];
+            updatePreviewHeader();
+            renderItems();
+        }
+
+        function printReceipt() {
+            window.print();
+        }
+
+        // Robust PDF generation using html2canvas and jsPDF standard libraries
+        async function downloadPDF() {
+            const element = document.getElementById('receipt-printable');
+            
+            try {
+                // Use html2canvas with background set explicitly to white
+                const canvas = await html2canvas(element, {
+                    scale: 2,
+                    useCORS: true,
+                    backgroundColor: '#ffffff'
+                });
+
+                const imgData = canvas.toDataURL('image/jpeg', 1.0);
+                
+                // Initialize jsPDF (Standard thermal receipt aspect ratio or portrait A4/custom)
+                const { jsPDF } = window.jspdf;
+                const pdf = new jsPDF({
+                    orientation: 'portrait',
+                    unit: 'mm',
+                    format: [80, 160] // standard thermal receipt paper width ~80mm
+                });
+
+                const pdfWidth = 80;
+                const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+
+                pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
+                pdf.save(`receipt_${currentReceiptNo}.pdf`);
+            } catch (error) {
+                console.error("PDF generation failed:", error);
+                alert("生成 PDF 發生錯誤，請稍後再試。");
+            }
+        }
+
+        window.onload = initApp;
+    </script>
+</body>
+</html>
