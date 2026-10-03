@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="zh-Hant" class="h-full bg-slate-900 text-slate-100">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Web Push 推播通知測試與程式碼產生器</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Inter', sans-serif; }
+    code, pre { font-family: 'JetBrains Mono', monospace; }
+    .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+    .custom-scrollbar::-webkit-scrollbar-track { background: rgba(15, 23, 42, 0.6); }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(51, 65, 85, 0.8); border-radius: 4px; }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(71, 85, 105, 1); }
+  </style>
+</head>
+<body class="h-full flex flex-col antialiased selection:bg-indigo-500 selection:text-white">
+
+  <!-- Navigation / Header -->
+  <header class="border-b border-slate-800 bg-slate-950/80 backdrop-blur sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center shadow-lg shadow-indigo-500/20">
+          <i class="fa-solid font-bold fa-bell text-white text-lg"></i>
+        </div>
+        <div>
+          <h1 class="font-bold text-lg leading-tight text-white">Web Push 推播主控台</h1>
+          <p class="text-xs text-slate-400">測試推播訂閱與生成後台發送代碼</p>
+        </div>
+      </div>
+
+      <!-- Quick Status Badges -->
+      <div class="hidden md:flex items-center space-x-3 text-xs">
+        <div class="px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-800 flex items-center space-x-2">
+          <span class="text-slate-400">通知權限:</span>
+          <span id="badge-permission" class="px-2 py-0.5 rounded font-medium bg-amber-500/10 text-amber-400 border border-amber-500/20">檢查中...</span>
+        </div>
+        <div class="px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-800 flex items-center space-x-2">
+          <span class="text-slate-400">Service Worker:</span>
+          <span id="badge-sw" class="px-2 py-0.5 rounded font-medium bg-slate-800 text-slate-400 border border-slate-700">未註冊</span>
+        </div>
+        <div class="px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-800 flex items-center space-x-2">
+          <span class="text-slate-400">推播訂閱:</span>
+          <span id="badge-sub" class="px-2 py-0.5 rounded font-medium bg-slate-800 text-slate-400 border border-slate-700">未訂閱</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content Layout -->
+  <main class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8 grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+    <!-- Left Column: Controls & Configuration -->
+    <div class="lg:col-span-6 space-y-6">
+
+      <!-- Toast Notification Alert Box -->
+      <div id="status-alert" class="hidden p-4 rounded-xl border flex items-start space-x-3 transition-all duration-300">
+        <i id="status-alert-icon" class="fa-solid mt-0.5 text-lg"></i>
+        <div class="flex-1 text-sm">
+          <h4 id="status-alert-title" class="font-semibold mb-0.5">提示</h4>
+          <p id="status-alert-msg" class="text-slate-300"></p>
+        </div>
+        <button onclick="hideAlert()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+
+      <!-- Card 1: VAPID Key Settings -->
+      <div class="bg-slate-950/60 border border-slate-800/80 rounded-2xl p-5 shadow-xl relative overflow-hidden">
+        <div class="absolute -right-10 -top-10 w-32 h-32 bg-indigo-500/10 rounded-full blur-2xl"></div>
+        <div class="flex items-center justify-between mb-4 border-b border-slate-800/60 pb-3">
+          <h2 class="font-semibold text-slate-200 flex items-center space-x-2">
+            <i class="fa-solid fa-key text-indigo-400"></i>
+            <span>VAPID 金鑰對設定</span>
+          </h2>
+          <span class="text-xs px-2 py-1 rounded bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">後台驗證密鑰</span>
+        </div>
+
+        <div class="space-y-4 text-sm">
+          <div>
+            <label class="block text-xs font-medium text-slate-400 mb-1">Subject (聯絡 Email)</label>
+            <input type="text" id="vapid-subject" value="mailto:ggghhh157@outlook.com" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-slate-200 focus:outline-none focus:border-indigo-500 transition text-xs font-mono">
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-slate-400 mb-1">Public Key (公鑰 - 前後台共享)</label>
+            <input type="text" id="vapid-public" value="BCGjAq-XLSN34HCFqviyQOf4byoK8K3qgmdQnk0ptp34ZjinxoDadocrIHKN2gtH5nShJB1lF_QeQCpMw3CnHTQ" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-slate-200 focus:outline-none focus:border-indigo-500 transition text-xs font-mono">
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-slate-400 mb-1">Private Key (私鑰 - 僅留給後台)</label>
+            <input type="password" id="vapid-private" value="r0f3ztw9reTfWhz7-vrrJDMnt5TG6kzFvZop4H1NzMg" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-slate-200 focus:outline-none focus:border-indigo-500 transition text-xs font-mono">
+          </div>
+        </div>
+      </div>
+
+      <!-- Card 2: Push Subscription Actions -->
+      <div class="bg-slate-950/60 border border-slate-800/80 rounded-2xl p-5 shadow-xl space-y-4">
+        <div class="flex items-center justify-between border-b border-slate-800/60 pb-3">
+          <h2 class="font-semibold text-slate-200 flex items-center space-x-2">
+            <i class="fa-solid fa-sliders text-indigo-400"></i>
+            <span>步驟 1: 網頁權限與訂閱測試</span>
+          </h2>
+        </div>
+
+        <p class="text-xs text-slate-400 leading-relaxed">
+          點擊下方按鈕以啟動 Service Worker、向瀏覽器請求通知授權，並透過公共 VAPID 金鑰取得唯一的 Push Subscription。
+        </p>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+          <button id="btn-subscribe" onclick="handleSubscribe()" class="flex items-center justify-center space-x-2 bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-white font-medium px-4 py-2.5 rounded-xl transition shadow-lg shadow-indigo-600/25">
+            <i class="fa-solid fa-bell-plus"></i>
+            <span>註冊並啟用推播</span>
+          </button>
+          
+          <button id="btn-unsubscribe" onclick="handleUnsubscribe()" class="flex items-center justify-center space-x-2 bg-slate-800 hover:bg-slate-700 active:bg-slate-850 text-slate-300 font-medium px-4 py-2.5 rounded-xl transition border border-slate-700">
+            <i class="fa-solid fa-bell-slash"></i>
+            <span>取消訂閱</span>
+          </button>
+        </div>
+
+        <!-- Local Simulator Box -->
+        <div class="mt-4 pt-4 border-t border-slate-800/60">
+          <h3 class="text-xs font-semibold text-slate-300 mb-2 flex items-center space-x-2">
+            <i class="fa-solid fa-bolt text-amber-400"></i>
+            <span>步驟 2: 本地模擬推播 (Local Notification Test)</span>
+          </h3>
+          <p class="text-xs text-slate-400 mb-3">不經過後台，直接透過現有 Service Worker 觸發測試彈窗。</p>
+          <button onclick="triggerLocalNotification()" class="w-full bg-slate-900 hover:bg-slate-800 text-emerald-400 border border-emerald-500/30 hover:border-emerald-500/60 font-medium px-4 py-2 rounded-xl transition text-xs flex items-center justify-center space-x-2">
+            <i class="fa-solid fa-paper-plane"></i>
+            <span>立即發送本機彈窗測試</span>
+          </button>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Right Column: Output Payloads & Code Generator -->
+    <div class="lg:col-span-6 space-y-6">
+
+      <!-- Card 3: Subscription JSON Payload -->
+      <div class="bg-slate-950/60 border border-slate-800/80 rounded-2xl p-5 shadow-xl flex flex-col">
+        <div class="flex items-center justify-between mb-3 border-b border-slate-800/60 pb-3">
+          <h2 class="font-semibold text-slate-200 flex items-center space-x-2">
+            <i class="fa-solid fa-code text-indigo-400"></i>
+            <span>步驟 3: 產生的 Subscription JSON</span>
+          </h2>
+          <button onclick="copySubscriptionJSON()" class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 px-3 py-1.5 rounded-lg transition border border-slate-700 flex items-center space-x-1">
+            <i class="fa-regular fa-copy"></i>
+            <span>複製</span>
+          </button>
+        </div>
+        
+        <p class="text-xs text-slate-400 mb-2">這段 JSON 是前端向瀏覽器註冊後獲得的目標端點，**必須傳送到你的伺服器**儲存。</p>
+
+        <div class="relative bg-slate-900 border border-slate-800 rounded-xl p-3 overflow-hidden">
+          <pre id="json-output" class="text-xs text-emerald-400 font-mono overflow-x-auto custom-scrollbar max-h-48 whitespace-pre-wrap">{
+  "status": "尚未訂閱，請點擊【註冊並啟用推播】以取得 JSON Payload"
+}</pre>
+        </div>
+      </div>
+
+      <!-- Card 4: Backend Code Generator -->
+      <div class="bg-slate-950/60 border border-slate-800/80 rounded-2xl p-5 shadow-xl">
+        <div class="flex items-center justify-between mb-3 border-b border-slate-800/60 pb-3">
+          <h2 class="font-semibold text-slate-200 flex items-center space-x-2">
+            <i class="fa-solid fa-server text-indigo-400"></i>
+            <span>步驟 4: 後台發送推播程式碼生成</span>
+          </h2>
+          <!-- Language Tabs -->
+          <div class="flex bg-slate-900 p-1 rounded-lg border border-slate-800 text-xs">
+            <button id="tab-node" onclick="switchTab('node')" class="px-3 py-1 rounded-md font-medium transition bg-indigo-600 text-white">Node.js</button>
+            <button id="tab-python" onclick="switchTab('python')" class="px-3 py-1 rounded-md font-medium transition text-slate-400 hover:text-white">Python</button>
+          </div>
+        </div>
+
+        <p class="text-xs text-slate-400 mb-3">已自動帶入您訂閱得到的 Subscription 以及上方 VAPID 密鑰，直接複製至後台即可執行：</p>
+
+        <!-- Code Block Preview -->
+        <div class="relative bg-slate-900 border border-slate-800 rounded-xl p-3 overflow-hidden">
+          <button onclick="copyGeneratedCode()" class="absolute top-2 right-2 text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 px-2.5 py-1 rounded-lg transition border border-slate-700 flex items-center space-x-1 z-10">
+            <i class="fa-regular fa-copy"></i>
+            <span>複製代碼</span>
+          </button>
+
+          <!-- Node Code -->
+          <div id="code-node-block">
+            <pre id="code-node" class="text-xs text-indigo-300 font-mono overflow-x-auto custom-scrollbar max-h-64 pt-6"></pre>
+          </div>
+
+          <!-- Python Code -->
+          <div id="code-python-block" class="hidden">
+            <pre id="code-python" class="text-xs text-amber-300 font-mono overflow-x-auto custom-scrollbar max-h-64 pt-6"></pre>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <script>
+    // State variables
+    let currentSubscription = null;
+    let swRegistration = null;
+    let activeTab = 'node';
+
+    // Utility: Convert base64 string to Uint8Array for VAPID Key
+    function urlBase64ToUint8Array(base64String) {
+      const padding = '='.repeat((4 - base64String.length % 4) % 4);
+      const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+      const rawData = window.atob(base64);
+      const outputArray = new Uint8Array(rawData.length);
+      for (let i = 0; i < rawData.length; ++i) {
+        outputArray[i] = rawData.charCodeAt(i);
+      }
+      return outputArray;
+    }
+
+    // Create Service Worker Blob inline
+    function createInlineServiceWorker() {
+      const swCode = `
+        self.addEventListener('push', function(event) {
+          let data = { title: '測試推播通知', body: '收到來自伺服器的文字訊息！' };
+          if (event.data) {
+            try {
+              data = event.data.json();
+            } catch (e) {
+              data.body = event.data.text();
+            }
+          }
+          const options = {
+            body: data.body || '無內文',
+            icon: 'https://cdn-icons-png.flaticon.com/512/3602/3602145.png',
+            badge: 'https://cdn-icons-png.flaticon.com/512/3602/3602145.png',
+            vibrate: [100, 50, 100],
+            data: { url: data.url || location.origin }
+          };
+          event.waitUntil(
+            self.registration.showNotification(data.title || '系統通知', options)
+          );
+        });
+
+        self.addEventListener('notificationclick', function(event) {
+          event.notification.close();
+          event.waitUntil(
+            clients.openWindow(event.notification.data.url)
+          );
+        });
+      `;
+      const blob = new Blob([swCode], { type: 'application/javascript' });
+      return URL.createObjectURL(blob);
+    }
+
+    window.addEventListener('load', async () => {
+      checkPermissionState();
+      await initServiceWorker();
+      updateCodePreviews();
+
+      // Listen for changes in keys
+      document.getElementById('vapid-subject').addEventListener('input', updateCodePreviews);
+      document.getElementById('vapid-public').addEventListener('input', updateCodePreviews);
+      document.getElementById('vapid-private').addEventListener('input', updateCodePreviews);
+    });
+
+    // Check browser notification permissions
+    function checkPermissionState() {
+      const badge = document.getElementById('badge-permission');
+      if (!('Notification' in window)) {
+        badge.textContent = '不支援';
+        badge.className = 'px-2 py-0.5 rounded font-medium bg-rose-500/10 text-rose-400 border border-rose-500/20';
+        showAlert('error', '此瀏覽器不支援 Web Push 通知');
+        return;
+      }
+
+      const perm = Notification.permission;
+      if (perm === 'granted') {
+        badge.textContent = '已授權';
+        badge.className = 'px-2 py-0.5 rounded font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20';
+      } else if (perm === 'denied') {
+        badge.textContent = '已被拒絕';
+        badge.className = 'px-2 py-0.5 rounded font-medium bg-rose-500/10 text-rose-400 border border-rose-500/20';
+      } else {
+        badge.textContent = '尚未授權';
+        badge.className = 'px-2 py-0.5 rounded font-medium bg-amber-500/10 text-amber-400 border border-amber-500/20';
+      }
+    }
+
+    // Initialize & register inline SW
+    async function initServiceWorker() {
+      const swBadge = document.getElementById('badge-sw');
+      if ('serviceWorker' in navigator) {
+        try {
+          const swUrl = createInlineServiceWorker();
+          swRegistration = await navigator.serviceWorker.register(swUrl);
+          swBadge.textContent = '已運行';
+          swBadge.className = 'px-2 py-0.5 rounded font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20';
+
+          // Check if already subscribed
+          const existingSub = await swRegistration.pushManager.getSubscription();
+          if (existingSub) {
+            currentSubscription = existingSub;
+            updateSubscriptionUI(true);
+          }
+        } catch (err) {
+          console.error('Service Worker 註冊失敗:', err);
+          swBadge.textContent = '註冊失敗';
+          swBadge.className = 'px-2 py-0.5 rounded font-medium bg-rose-500/10 text-rose-400 border border-rose-500/20';
+        }
+      } else {
+        swBadge.textContent = '不支援';
+      }
+    }
+
+    // Subscribe button action
+    async function handleSubscribe() {
+      if (!swRegistration) {
+        showAlert('error', 'Service Worker 尚未準備就緒');
+        return;
+      }
+
+      try {
+        const permission = await Notification.requestPermission();
+        checkPermissionState();
+
+        if (permission !== 'granted') {
+          showAlert('error', '您拒絕了通知權限，無法進行推播測試');
+          return;
+        }
+
+        const publicKey = document.getElementById('vapid-public').value.trim();
+        if (!publicKey) {
+          showAlert('error', '請填寫正確的 VAPID Public Key');
+          return;
+        }
+
+        const convertedKey = urlBase64ToUint8Array(publicKey);
+        const subscription = await swRegistration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: convertedKey
+        });
+
+        currentSubscription = subscription;
+        updateSubscriptionUI(true);
+        showAlert('success', '成功訂閱 Web Push！以取得憑證資料。');
+      } catch (err) {
+        console.error('訂閱失敗:', err);
+        showAlert('error', '訂閱失敗：' + err.message);
+      }
+    }
+
+    // Unsubscribe action
+    async function handleUnsubscribe() {
+      if (!currentSubscription) {
+        showAlert('info', '目前沒有啟動中的推播訂閱');
+        return;
+      }
+
+      try {
+        await currentSubscription.unsubscribe();
+        currentSubscription = null;
+        updateSubscriptionUI(false);
+        showAlert('info', '已成功取消推播訂閱');
+      } catch (err) {
+        showAlert('error', '取消訂閱失敗：' + err.message);
+      }
+    }
+
+    // Update UI Elements with subscription data
+    function updateSubscriptionUI(isSubscribed) {
+      const subBadge = document.getElementById('badge-sub');
+      const jsonOutput = document.getElementById('json-output');
+
+      if (isSubscribed && currentSubscription) {
+        subBadge.textContent = '已訂閱';
+        subBadge.className = 'px-2 py-0.5 rounded font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20';
+        jsonOutput.textContent = JSON.stringify(currentSubscription, null, 2);
+      } else {
+        subBadge.textContent = '未訂閱';
+        subBadge.className = 'px-2 py-0.5 rounded font-medium bg-slate-800 text-slate-400 border border-slate-700';
+        jsonOutput.textContent = JSON.stringify({ status: '尚未訂閱，請點擊【註冊並啟用推播】以取得 JSON Payload' }, null, 2);
+      }
+      updateCodePreviews();
+    }
+
+    // Trigger local push simulation
+    function triggerLocalNotification() {
+      if (Notification.permission !== 'granted') {
+        showAlert('error', '請先點擊【註冊並啟用推播】授予通知權限！');
+        return;
+      }
+
+      if (swRegistration) {
+        swRegistration.showNotification('本機測試推播', {
+          body: '這是一條由本機 Service Worker 直接發出的測試文字通知！',
+          icon: 'https://cdn-icons-png.flaticon.com/512/3602/3602145.png',
+          badge: 'https://cdn-icons-png.flaticon.com/512/3602/3602145.png',
+          data: { url: window.location.href }
+        });
+        showAlert('success', '已發送本機推播通知彈窗！');
+      }
+    }
+
+    // Dynamic Code Generator
+    function updateCodePreviews() {
+      const subject = document.getElementById('vapid-subject').value.trim();
+      const pubKey = document.getElementById('vapid-public').value.trim();
+      const privKey = document.getElementById('vapid-private').value.trim();
+
+      const subString = currentSubscription 
+        ? JSON.stringify(currentSubscription, null, 2) 
+        : `{\n  "endpoint": "https://fcm.googleapis.com/fcm/send/...",\n  "keys": {\n    "p256dh": "...",\n    "auth": "..."\n  }\n}`;
+
+      // Node.js Template
+      const nodeCode = `const webpush = require('web-push');
+
+// 1. 設定 VAPID Keys 憑證
+const vapidKeys = {
+  subject: '${subject}',
+  publicKey: '${pubKey}',
+  privateKey: '${privKey}'
+};
+
+webpush.setVapidDetails(
+  vapidKeys.subject,
+  vapidKeys.publicKey,
+  vapidKeys.privateKey
+);
+
+// 2. 目標前端訂閱者 JSON (從前端 API 收集而來)
+const pushSubscription = ${subString};
+
+// 3. 欲發送的文字內容與設定
+const payload = JSON.stringify({
+  title: '後台通知',
+  body: '這是一條從 Node.js 後台成功發送的推播文字！',
+  url: 'https://google.com'
+});
+
+// 4. 發送推播
+webpush.sendNotification(pushSubscription, payload)
+  .then(response => {
+    console.log('推播發送成功！狀態碼:', response.statusCode);
+  })
+  .catch(error => {
+    console.error('發送失敗:', error);
+  });`;
+
+      // Python Template
+      const pythonCode = `import json
+from pywebpush import webpush, WebPushException
+
+# 1. 訂閱者 JSON Payload
+subscription_info = ${subString}
+
+# 2. 欲發送的推播內容
+payload_data = json.dumps({
+    "title": "Python 後台推播",
+    "body": "這是一條從 Python 後台發出的推播文字！",
+    "url": "https://google.com"
+})
+
+# 3. 發送推播訊息
+try:
+    response = webpush(
+        subscription_info=subscription_info,
+        data=payload_data,
+        vapid_private_key="${privKey}",
+        vapid_claims={
+            "sub": "${subject}"
+        }
+    )
+    print("推播發送成功:", response.status_code)
+except WebPushException as ex:
+    print("發送失敗:", ex)
+    if ex.response is not None:
+        print(ex.response.text)`;
+
+      document.getElementById('code-node').textContent = nodeCode;
+      document.getElementById('code-python').textContent = pythonCode;
+    }
+
+    // Copy Utilities
+    function copySubscriptionJSON() {
+      const text = document.getElementById('json-output').textContent;
+      copyToClipboard(text, 'Subscription JSON 已複製到剪貼簿');
+    }
+
+    function copyGeneratedCode() {
+      const text = activeTab === 'node' 
+        ? document.getElementById('code-node').textContent 
+        : document.getElementById('code-python').textContent;
+      copyToClipboard(text, `${activeTab === 'node' ? 'Node.js' : 'Python'} 程式碼已複製`);
+    }
+
+    function copyToClipboard(text, successMessage) {
+      const textarea = document.createElement('textarea');
+      textarea.value = text;
+      document.body.appendChild(textarea);
+      textarea.select();
+      try {
+        document.execCommand('copy');
+        showAlert('success', successMessage);
+      } catch (err) {
+        showAlert('error', '複製失敗');
+      }
+      document.body.removeChild(textarea);
+    }
+
+    // Switch Tabs between Node and Python
+    function switchTab(tab) {
+      activeTab = tab;
+      const nodeTab = document.getElementById('tab-node');
+      const pythonTab = document.getElementById('tab-python');
+      const nodeBlock = document.getElementById('code-node-block');
+      const pythonBlock = document.getElementById('code-python-block');
+
+      if (tab === 'node') {
+        nodeTab.className = 'px-3 py-1 rounded-md font-medium transition bg-indigo-600 text-white';
+        pythonTab.className = 'px-3 py-1 rounded-md font-medium transition text-slate-400 hover:text-white';
+        nodeBlock.classList.remove('hidden');
+        pythonBlock.classList.add('hidden');
+      } else {
+        pythonTab.className = 'px-3 py-1 rounded-md font-medium transition bg-indigo-600 text-white';
+        nodeTab.className = 'px-3 py-1 rounded-md font-medium transition text-slate-400 hover:text-white';
+        pythonBlock.classList.remove('hidden');
+        nodeBlock.classList.add('hidden');
+      }
+    }
+
+    // Alert toast notification
+    function showAlert(type, message) {
+      const alertEl = document.getElementById('status-alert');
+      const iconEl = document.getElementById('status-alert-icon');
+      const titleEl = document.getElementById('status-alert-title');
+      const msgEl = document.getElementById('status-alert-msg');
+
+      alertEl.classList.remove('hidden', 'bg-emerald-500/10', 'border-emerald-500/30', 'text-emerald-400', 'bg-rose-500/10', 'border-rose-500/30', 'text-rose-400', 'bg-indigo-500/10', 'border-indigo-500/30', 'text-indigo-400');
+
+      if (type === 'success') {
+        alertEl.classList.add('bg-emerald-500/10', 'border-emerald-500/30', 'text-emerald-400');
+        iconEl.className = 'fa-solid fa-circle-check mt-0.5 text-lg';
+        titleEl.textContent = '成功';
+      } else if (type === 'error') {
+        alertEl.classList.add('bg-rose-500/10', 'border-rose-500/30', 'text-rose-400');
+        iconEl.className = 'fa-solid fa-circle-exclamation mt-0.5 text-lg';
+        titleEl.textContent = '錯誤';
+      } else {
+        alertEl.classList.add('bg-indigo-500/10', 'border-indigo-500/30', 'text-indigo-400');
+        iconEl.className = 'fa-solid fa-circle-info mt-0.5 text-lg';
+        titleEl.textContent = '提示';
+      }
+
+      msgEl.textContent = message;
+      alertEl.classList.remove('hidden');
+    }
+
+    function hideAlert() {
+      document.getElementById('status-alert').classList.add('hidden');
+    }
+  </script>
+</body>
+</html>
