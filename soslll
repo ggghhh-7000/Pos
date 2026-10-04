@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="zh-Hant" class="h-full bg-slate-900 text-slate-100">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OneSignal 推播測試與後台發送代碼產生器</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  
+  <!-- OneSignal Web SDK v16 -->
+  <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
+  
+  <style>
+    body { font-family: 'Inter', sans-serif; }
+    code, pre { font-family: 'JetBrains Mono', monospace; }
+    .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+    .custom-scrollbar::-webkit-scrollbar-track { background: rgba(15, 23, 42, 0.6); }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(51, 65, 85, 0.8); border-radius: 4px; }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(71, 85, 105, 1); }
+  </style>
+</head>
+<body class="h-full flex flex-col antialiased selection:bg-rose-500 selection:text-white">
+
+  <header class="border-b border-slate-800 bg-slate-950/80 backdrop-blur sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-rose-500 to-orange-500 flex items-center justify-center shadow-lg shadow-rose-500/20">
+          <i class="fa-solid fa-bell text-white text-lg"></i>
+        </div>
+        <div>
+          <h1 class="font-bold text-lg leading-tight text-white flex items-center space-x-2">
+            <span>OneSignal 推播控制台</span>
+            <span class="text-xs bg-rose-500/20 text-rose-300 border border-rose-500/30 px-2 py-0.5 rounded-full font-normal">v16 SDK</span>
+          </h1>
+          <p class="text-xs text-slate-400">一鍵整合 OneSignal 前端訂閱與 REST API 後台觸發</p>
+        </div>
+      </div>
+
+      <!-- Quick Status Badges -->
+      <div class="hidden md:flex items-center space-x-3 text-xs">
+        <div class="px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-800 flex items-center space-x-2">
+          <span class="text-slate-400">SDK 初始化:</span>
+          <span id="badge-sdk" class="px-2 py-0.5 rounded font-medium bg-amber-500/10 text-amber-400 border border-amber-500/20">等待初始化</span>
+        </div>
+        <div class="px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-800 flex items-center space-x-2">
+          <span class="text-slate-400">推播訂閱狀態:</span>
+          <span id="badge-sub" class="px-2 py-0.5 rounded font-medium bg-slate-800 text-slate-400 border border-slate-700">未訂閱</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8 grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+    <!-- Left Column: OneSignal Configuration & Controls -->
+    <div class="lg:col-span-6 space-y-6">
+
+      <!-- Toast Alert Banner -->
+      <div id="status-alert" class="hidden p-4 rounded-xl border flex items-start space-x-3 transition-all duration-300">
+        <i id="status-alert-icon" class="fa-solid mt-0.5 text-lg"></i>
+        <div class="flex-1 text-sm">
+          <h4 id="status-alert-title" class="font-semibold mb-0.5">提示</h4>
+          <p id="status-alert-msg" class="text-slate-300"></p>
+        </div>
+        <button onclick="hideAlert()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+
+      <!-- OneSignal App Credentials Box -->
+      <div class="bg-slate-950/60 border border-slate-800/80 rounded-2xl p-5 shadow-xl relative overflow-hidden">
+        <div class="absolute -right-10 -top-10 w-32 h-32 bg-rose-500/10 rounded-full blur-2xl"></div>
+        <div class="flex items-center justify-between mb-4 border-b border-slate-800/60 pb-3">
+          <h2 class="font-semibold text-slate-200 flex items-center space-x-2">
+            <i class="fa-solid fa-key text-rose-400"></i>
+            <span>1. OneSignal 應用程式憑證設定</span>
+          </h2>
+          <a href="https://dashboard.onesignal.com" target="_blank" class="text-xs text-rose-400 hover:text-rose-300 flex items-center space-x-1">
+            <span>前往 Dashboard</span>
+            <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i>
+          </a>
+        </div>
+
+        <div class="space-y-4 text-sm">
+          <div>
+            <label class="block text-xs font-medium text-slate-300 mb-1">
+              OneSignal App ID <span class="text-rose-400">*</span>
+            </label>
+            <input type="text" id="onesignal-appid" value="87b55cc9-beda-439e-b5b8-88b401302860" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-slate-200 focus:outline-none focus:border-rose-500 transition text-xs font-mono">
+          </div>
+
+          <div>
+            <label class="block text-xs font-medium text-slate-300 mb-1">
+              REST API Key <span class="text-slate-500">(前往 Settings -> Keys & IDs 複製)</span>
+            </label>
+            <input type="password" id="onesignal-restkey" placeholder="例如：os_v2_app_xxxxxxxx..." class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-slate-200 focus:outline-none focus:border-rose-500 transition text-xs font-mono">
+          </div>
+
+          <button onclick="initializeOneSignalSDK()" class="w-full bg-rose-600 hover:bg-rose-500 active:bg-rose-700 text-white font-medium py-2.5 rounded-xl transition text-xs flex items-center justify-center space-x-2 shadow-lg shadow-rose-600/20">
+            <i class="fa-solid fa-plug"></i>
+            <span>初始化 OneSignal SDK</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Subscription Operations Box -->
+      <div class="bg-slate-950/60 border border-slate-800/80 rounded-2xl p-5 shadow-xl space-y-4">
+        <div class="flex items-center justify-between border-b border-slate-800/60 pb-3">
+          <h2 class="font-semibold text-slate-200 flex items-center space-x-2">
+            <i class="fa-solid fa-sliders text-rose-400"></i>
+            <span>2. 前端網頁授權與訂閱測試</span>
+          </h2>
+        </div>
+
+        <p class="text-xs text-slate-400 leading-relaxed">
+          點擊下方按鈕以請求瀏覽器通知授權並啟用 OneSignal 訂閱。成功後將獲得唯一的 <strong>Subscription ID (Player ID)</strong>。
+        </p>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+          <button id="btn-request-perm" onclick="requestPushPermission()" class="flex items-center justify-center space-x-2 bg-slate-800 hover:bg-slate-700 text-slate-200 font-medium px-4 py-2.5 rounded-xl transition border border-slate-700 text-xs">
+            <i class="fa-solid fa-bell"></i>
+            <span>請求通知授權</span>
+          </button>
+          
+          <button id="btn-opt-in" onclick="optInPush()" class="flex items-center justify-center space-x-2 bg-emerald-600 hover:bg-emerald-500 text-white font-medium px-4 py-2.5 rounded-xl transition text-xs shadow-lg shadow-emerald-600/20">
+            <i class="fa-solid fa-user-plus"></i>
+            <span>啟用推播訂閱</span>
+          </button>
+        </div>
+
+        <button onclick="optOutPush()" class="w-full text-xs text-slate-400 hover:text-slate-200 py-1 underline">
+          取消目前裝置的推播訂閱 (Opt-Out)
+        </button>
+      </div>
+
+    </div>
+
+    <!-- Right Column: Subscription Output & Backend REST API Code Generator -->
+    <div class="lg:col-span-6 space-y-6">
+
+      <!-- Subscription Data Display -->
+      <div class="bg-slate-950/60 border border-slate-800/80 rounded-2xl p-5 shadow-xl flex flex-col">
+        <div class="flex items-center justify-between mb-3 border-b border-slate-800/60 pb-3">
+          <h2 class="font-semibold text-slate-200 flex items-center space-x-2">
+            <i class="fa-solid fa-id-card text-rose-400"></i>
+            <span>3. 取得的 Subscription ID</span>
+          </h2>
+          <button onclick="copySubscriptionID()" class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 px-3 py-1.5 rounded-lg transition border border-slate-700 flex items-center space-x-1">
+            <i class="fa-regular fa-copy"></i>
+            <span>複製 ID</span>
+          </button>
+        </div>
+        
+        <p class="text-xs text-slate-400 mb-2">OneSignal 透過此 Subscription ID 識別特定使用者的裝置與瀏覽器。</p>
+
+        <div class="relative bg-slate-900 border border-slate-800 rounded-xl p-3 overflow-hidden">
+          <pre id="subscription-output" class="text-xs text-emerald-400 font-mono overflow-x-auto custom-scrollbar whitespace-pre-wrap">請先完成初始化與訂閱...</pre>
+        </div>
+      </div>
+
+      <!-- OneSignal Backend REST API Code Generator -->
+      <div class="bg-slate-950/60 border border-slate-800/80 rounded-2xl p-5 shadow-xl">
+        <div class="flex items-center justify-between mb-3 border-b border-slate-800/60 pb-3">
+          <h2 class="font-semibold text-slate-200 flex items-center space-x-2">
+            <i class="fa-solid fa-server text-rose-400"></i>
+            <span>4. OneSignal REST API 後台發送程式碼</span>
+          </h2>
+          <!-- Language Tabs -->
+          <div class="flex bg-slate-900 p-1 rounded-lg border border-slate-800 text-xs space-x-1">
+            <button id="tab-node" onclick="switchTab('node')" class="px-2.5 py-1 rounded-md font-medium transition bg-rose-600 text-white">Node.js</button>
+            <button id="tab-python" onclick="switchTab('python')" class="px-2.5 py-1 rounded-md font-medium transition text-slate-400 hover:text-white">Python</button>
+            <button id="tab-curl" onclick="switchTab('curl')" class="px-2.5 py-1 rounded-md font-medium transition text-slate-400 hover:text-white">cURL</button>
+          </div>
+        </div>
+
+        <p class="text-xs text-slate-400 mb-3">使用官方 REST API v1 直接從伺服器端觸發推播通知：</p>
+
+        <!-- Code Block Preview -->
+        <div class="relative bg-slate-900 border border-slate-800 rounded-xl p-3 overflow-hidden">
+          <button onclick="copyGeneratedCode()" class="absolute top-2 right-2 text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 px-2.5 py-1 rounded-lg transition border border-slate-700 flex items-center space-x-1 z-10">
+            <i class="fa-regular fa-copy"></i>
+            <span>複製代碼</span>
+          </button>
+
+          <!-- Node Code -->
+          <div id="code-node-block">
+            <pre id="code-node" class="text-xs text-rose-300 font-mono overflow-x-auto custom-scrollbar max-h-64 pt-6"></pre>
+          </div>
+
+          <!-- Python Code -->
+          <div id="code-python-block" class="hidden">
+            <pre id="code-python" class="text-xs text-amber-300 font-mono overflow-x-auto custom-scrollbar max-h-64 pt-6"></pre>
+          </div>
+
+          <!-- cURL Code -->
+          <div id="code-curl-block" class="hidden">
+            <pre id="code-curl" class="text-xs text-emerald-300 font-mono overflow-x-auto custom-scrollbar max-h-64 pt-6"></pre>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <script>
+    let onesignalInitialized = false;
+    let currentSubscriptionId = null;
+    let activeTab = 'node';
+
+    window.addEventListener('load', () => {
+      // Auto initial SDK on page load
+      initializeOneSignalSDK();
+
+      document.getElementById('onesignal-appid').addEventListener('input', updateCodePreviews);
+      document.getElementById('onesignal-restkey').addEventListener('input', updateCodePreviews);
+    });
+
+    async function initializeOneSignalSDK() {
+      const appId = document.getElementById('onesignal-appid').value.trim();
+
+      if (!appId) {
+        showAlert('error', '請輸入有效的 OneSignal App ID！');
+        return;
+      }
+
+      window.OneSignalDeferred = window.OneSignalDeferred || [];
+      window.OneSignalDeferred.push(async function(OneSignal) {
+        try {
+          await OneSignal.init({
+            appId: appId,
+            allowLocalhostAsSecureOrigin: true
+          });
+
+          onesignalInitialized = true;
+          
+          const badgeSdk = document.getElementById('badge-sdk');
+          badgeSdk.textContent = '已初始化';
+          badgeSdk.className = 'px-2 py-0.5 rounded font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20';
+
+          showAlert('success', 'OneSignal SDK 初始化完成！');
+
+          // Listen to subscription state changes
+          OneSignal.User.PushSubscription.addEventListener("change", (event) => {
+            updateSubscriptionState(OneSignal);
+          });
+
+          // Check current subscription
+          updateSubscriptionState(OneSignal);
+
+        } catch (err) {
+          console.error('OneSignal Init Error:', err);
+          showAlert('error', 'OneSignal 初始化失敗: ' + err.message);
+        }
+      });
+    }
+
+    function updateSubscriptionState(OneSignal) {
+      const isSubscribed = OneSignal.User.PushSubscription.optedIn;
+      const subId = OneSignal.User.PushSubscription.id;
+
+      const subBadge = document.getElementById('badge-sub');
+      const subOutput = document.getElementById('subscription-output');
+
+      if (isSubscribed && subId) {
+        currentSubscriptionId = subId;
+        subBadge.textContent = '已訂閱';
+        subBadge.className = 'px-2 py-0.5 rounded font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20';
+        
+        subOutput.textContent = JSON.stringify({
+          status: 'Subscribed',
+          subscription_id: subId,
+          opted_in: true
+        }, null, 2);
+      } else {
+        currentSubscriptionId = null;
+        subBadge.textContent = '未訂閱';
+        subBadge.className = 'px-2 py-0.5 rounded font-medium bg-slate-800 text-slate-400 border border-slate-700';
+
+        subOutput.textContent = JSON.stringify({
+          status: 'Not Subscribed',
+          opted_in: isSubscribed || false,
+          subscription_id: subId || null
+        }, null, 2);
+      }
+
+      updateCodePreviews();
+    }
+
+    function requestPushPermission() {
+      if (!onesignalInitialized) {
+        showAlert('error', '請先點擊【初始化 OneSignal SDK】！');
+        return;
+      }
+
+      window.OneSignalDeferred.push(async function(OneSignal) {
+        try {
+          await OneSignal.Notifications.requestPermission();
+          showAlert('info', '已發送通知權限請求。');
+          updateSubscriptionState(OneSignal);
+        } catch (err) {
+          showAlert('error', '權限請求失敗：' + err.message);
+        }
+      });
+    }
+
+    function optInPush() {
+      if (!onesignalInitialized) {
+        showAlert('error', '請先點擊【初始化 OneSignal SDK】！');
+        return;
+      }
+
+      window.OneSignalDeferred.push(async function(OneSignal) {
+        try {
+          await OneSignal.User.PushSubscription.optIn();
+          showAlert('success', '已成功開啟推播訂閱！');
+          updateSubscriptionState(OneSignal);
+        } catch (err) {
+          showAlert('error', '訂閱失敗：' + err.message);
+        }
+      });
+    }
+
+    function optOutPush() {
+      if (!onesignalInitialized) return;
+
+      window.OneSignalDeferred.push(async function(OneSignal) {
+        try {
+          await OneSignal.User.PushSubscription.optOut();
+          showAlert('info', '已取消推播訂閱。');
+          updateSubscriptionState(OneSignal);
+        } catch (err) {
+          showAlert('error', '取消失敗：' + err.message);
+        }
+      });
+    }
+
+    function updateCodePreviews() {
+      const appId = document.getElementById('onesignal-appid').value.trim() || 'YOUR_ONESIGNAL_APP_ID';
+      const restKey = document.getElementById('onesignal-restkey').value.trim() || 'YOUR_REST_API_KEY';
+      const targetSubId = currentSubscriptionId || 'YOUR_SUBSCRIPTION_ID';
+
+      // Node.js OneSignal REST API (Fetch)
+      const nodeCode = `// 使用 Node.js (v18+) 內建 fetch 呼叫 OneSignal REST API
+async function sendOneSignalNotification() {
+  const url = 'https://onesignal.com/api/v1/notifications';
+  
+  const payload = {
+    app_id: "${appId}",
+    include_subscription_ids: ["${targetSubId}"],
+    headings: { en: "系統通知", zh: "系統通知" },
+    contents: { en: "這是一條來自 Node.js 後台發送的推播文字！", zh: "這是一條來自 Node.js 後台發送的推播文字！" },
+    url: "https://10800.pages.dev"
+  };
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json; charset=utf-8',
+      'Authorization': 'Basic ${restKey}'
+    },
+    body: JSON.stringify(payload)
+  });
+
+  const data = await response.json();
+  console.log('推播發送結果:', data);
+}
+
+sendOneSignalNotification();`;
+
+      // Python OneSignal REST API
+      const pythonCode = `import requests
+
+url = "https://onesignal.com/api/v1/notifications"
+
+headers = {
+    "accept": "application/json",
+    "Authorization": "Basic ${restKey}",
+    "content-type": "application/json"
+}
+
+payload = {
+    "app_id": "${appId}",
+    "include_subscription_ids": ["${targetSubId}"],
+    "headings": {"zh-Hant": "Python 推播通知"},
+    "contents": {"zh-Hant": "這是一條從 Python 後台經由 OneSignal REST API 發出的推播！"},
+    "url": "https://10800.pages.dev"
+}
+
+response = requests.post(url, json=payload, headers=headers)
+print("發送結果:", response.status_code, response.text)`;
+
+      // cURL Command
+      const curlCode = `curl --request POST \\
+     --url https://onesignal.com/api/v1/notifications \\
+     --header 'Authorization: Basic ${restKey}' \\
+     --header 'accept: application/json' \\
+     --header 'content-type: application/json' \\
+     --data '
+{
+  "app_id": "${appId}",
+  "include_subscription_ids": ["${targetSubId}"],
+  "headings": {"en": "cURL 測試推播"},
+  "contents": {"en": "這是一條由 cURL 直接發送的 OneSignal 訊息！"}
+}'`;
+
+      document.getElementById('code-node').textContent = nodeCode;
+      document.getElementById('code-python').textContent = pythonCode;
+      document.getElementById('code-curl').textContent = curlCode;
+    }
+
+    function copySubscriptionID() {
+      if (!currentSubscriptionId) {
+        showAlert('error', '目前尚未取得 Subscription ID');
+        return;
+      }
+      copyToClipboard(currentSubscriptionId, 'Subscription ID 已複製到剪貼簿');
+    }
+
+    function copyGeneratedCode() {
+      let text = '';
+      if (activeTab === 'node') text = document.getElementById('code-node').textContent;
+      else if (activeTab === 'python') text = document.getElementById('code-python').textContent;
+      else if (activeTab === 'curl') text = document.getElementById('code-curl').textContent;
+
+      copyToClipboard(text, `${activeTab.toUpperCase()} 程式碼已複製`);
+    }
+
+    function copyToClipboard(text, successMessage) {
+      const textarea = document.createElement('textarea');
+      textarea.value = text;
+      document.body.appendChild(textarea);
+      textarea.select();
+      try {
+        document.execCommand('copy');
+        showAlert('success', successMessage);
+      } catch (err) {
+        showAlert('error', '複製失敗');
+      }
+      document.body.removeChild(textarea);
+    }
+
+    function switchTab(tab) {
+      activeTab = tab;
+      const tabs = ['node', 'python', 'curl'];
+
+      tabs.forEach(t => {
+        const tabBtn = document.getElementById(`tab-${t}`);
+        const codeBlock = document.getElementById(`code-${t}-block`);
+
+        if (t === tab) {
+          tabBtn.className = 'px-2.5 py-1 rounded-md font-medium transition bg-rose-600 text-white';
+          codeBlock.classList.remove('hidden');
+        } else {
+          tabBtn.className = 'px-2.5 py-1 rounded-md font-medium transition text-slate-400 hover:text-white';
+          codeBlock.classList.add('hidden');
+        }
+      });
+    }
+
+    function showAlert(type, message) {
+      const alertEl = document.getElementById('status-alert');
+      const iconEl = document.getElementById('status-alert-icon');
+      const titleEl = document.getElementById('status-alert-title');
+      const msgEl = document.getElementById('status-alert-msg');
+
+      alertEl.classList.remove('hidden', 'bg-emerald-500/10', 'border-emerald-500/30', 'text-emerald-400', 'bg-rose-500/10', 'border-rose-500/30', 'text-rose-400', 'bg-indigo-500/10', 'border-indigo-500/30', 'text-indigo-400');
+
+      if (type === 'success') {
+        alertEl.classList.add('bg-emerald-500/10', 'border-emerald-500/30', 'text-emerald-400');
+        iconEl.className = 'fa-solid fa-circle-check mt-0.5 text-lg';
+        titleEl.textContent = '成功';
+      } else if (type === 'error') {
+        alertEl.classList.add('bg-rose-500/10', 'border-rose-500/30', 'text-rose-400');
+        iconEl.className = 'fa-solid fa-circle-exclamation mt-0.5 text-lg';
+        titleEl.textContent = '錯誤';
+      } else {
+        alertEl.classList.add('bg-indigo-500/10', 'border-indigo-500/30', 'text-indigo-400');
+        iconEl.className = 'fa-solid fa-circle-info mt-0.5 text-lg';
+        titleEl.textContent = '提示';
+      }
+
+      msgEl.textContent = message;
+      alertEl.classList.remove('hidden');
+    }
+
+    function hideAlert() {
+      document.getElementById('status-alert').classList.add('hidden');
+    }
+  </script>
+</body>
+</html>
