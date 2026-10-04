@@ -92,14 +92,14 @@
 
           <div>
             <label class="block text-xs font-medium text-slate-300 mb-1">
-              REST API Key <span class="text-slate-500">(前往 Settings -> Keys & IDs 複製)</span>
+              REST API Key
             </label>
-            <input type="password" id="onesignal-restkey" placeholder="例如：os_v2_app_xxxxxxxx..." class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-slate-200 focus:outline-none focus:border-rose-500 transition text-xs font-mono">
+            <input type="password" id="onesignal-restkey" value="os_v2_app_q62vzsn63jbz5nnyrc2acmbimansishs2htuzlv72qpf3qdynnnoj6e7kird2nouvqrwfef45orm3gr3qpmwsrgolchfv2yhdqotqwi" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-slate-200 focus:outline-none focus:border-rose-500 transition text-xs font-mono">
           </div>
 
           <button onclick="initializeOneSignalSDK()" class="w-full bg-rose-600 hover:bg-rose-500 active:bg-rose-700 text-white font-medium py-2.5 rounded-xl transition text-xs flex items-center justify-center space-x-2 shadow-lg shadow-rose-600/20">
             <i class="fa-solid fa-plug"></i>
-            <span>初始化 OneSignal SDK</span>
+            <span>重新初始化 OneSignal SDK</span>
           </button>
         </div>
       </div>
@@ -155,7 +155,7 @@
         <p class="text-xs text-slate-400 mb-2">OneSignal 透過此 Subscription ID 識別特定使用者的裝置與瀏覽器。</p>
 
         <div class="relative bg-slate-900 border border-slate-800 rounded-xl p-3 overflow-hidden">
-          <pre id="subscription-output" class="text-xs text-emerald-400 font-mono overflow-x-auto custom-scrollbar whitespace-pre-wrap">請先完成初始化與訂閱...</pre>
+          <pre id="subscription-output" class="text-xs text-emerald-400 font-mono overflow-x-auto custom-scrollbar whitespace-pre-wrap">初始化中...</pre>
         </div>
       </div>
 
@@ -174,7 +174,7 @@
           </div>
         </div>
 
-        <p class="text-xs text-slate-400 mb-3">使用官方 REST API v1 直接從伺服器端觸發推播通知：</p>
+        <p class="text-xs text-slate-400 mb-3">已帶入您的 REST API Key 與最新 Subscription ID：</p>
 
         <!-- Code Block Preview -->
         <div class="relative bg-slate-900 border border-slate-800 rounded-xl p-3 overflow-hidden">
@@ -357,7 +357,7 @@ async function sendOneSignalNotification() {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json; charset=utf-8',
-      'Authorization': 'Basic ${restKey}'
+      'Authorization': 'Key ${restKey}'
     },
     body: JSON.stringify(payload)
   });
@@ -375,7 +375,7 @@ url = "https://onesignal.com/api/v1/notifications"
 
 headers = {
     "accept": "application/json",
-    "Authorization": "Basic ${restKey}",
+    "Authorization": "Key ${restKey}",
     "content-type": "application/json"
 }
 
@@ -393,7 +393,7 @@ print("發送結果:", response.status_code, response.text)`;
       // cURL Command
       const curlCode = `curl --request POST \\
      --url https://onesignal.com/api/v1/notifications \\
-     --header 'Authorization: Basic ${restKey}' \\
+     --header 'Authorization: Key ${restKey}' \\
      --header 'accept: application/json' \\
      --header 'content-type: application/json' \\
      --data '
