@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>EdgePOS 智能收銀系統</title>
+    <title>EdgePOS 智能收銀系統 (含授權認證)</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
@@ -67,13 +67,28 @@
                     <span class="text-slate-700 font-bold">總金額：</span>
                     <span class="text-2xl font-extrabold text-blue-600">$<span id="cart-total">0</span></span>
                 </div>
-                <button onclick="processCheckout()" id="checkout-btn" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-3 rounded-lg font-bold text-lg shadow transition disabled:opacity-50 disabled:cursor-not-allowed">
+                <button onclick="requestCheckoutAuth()" id="checkout-btn" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-3 rounded-lg font-bold text-lg shadow transition disabled:opacity-50 disabled:cursor-not-allowed">
                     結 帳 (Checkout)
                 </button>
             </div>
         </section>
 
     </main>
+
+    <!-- ================= Home 成員授權認證 Modal ================= -->
+    <div id="auth-modal" class="fixed inset-0 bg-black/50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl max-w-sm w-full p-6 shadow-2xl border border-slate-200">
+            <h3 class="text-lg font-bold mb-2 text-slate-800">🔐 Home 成員授權認證</h3>
+            <p class="text-xs text-slate-500 mb-4">請輸入 Home 成員認證碼以完成這筆結帳交易：</p>
+            <input type="password" id="auth-code-input" placeholder="請輸入認證碼" 
+                class="w-full border border-slate-300 rounded px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none mb-4"
+                onkeypress="handleAuthEnter(event)">
+            <div class="flex justify-end space-x-2">
+                <button onclick="closeAuthModal()" class="px-4 py-2 text-slate-600 text-sm hover:bg-slate-100 rounded-lg">取消</button>
+                <button onclick="verifyAndCheckout()" class="px-4 py-2 bg-emerald-600 text-white text-sm font-semibold rounded-lg hover:bg-emerald-700 shadow">確認授權結帳</button>
+            </div>
+        </div>
+    </div>
 
     <!-- JavaScript 業務邏輯 -->
     <script>
@@ -272,11 +287,11 @@
             renderProducts(filtered);
         }
 
-        async function processCheckout() {
+        // --- 結帳與認證授權流程 ---
+        function requestCheckoutAuth() {
             if (cart.length === 0) return;
 
-            const totalAmount = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-            
+            // 先檢查本地庫存是否足夠
             for (let item of cart) {
                 let p = products.find(prod => (prod.id === item.id || prod.sku === item.id));
                 if (!p || p.stock < item.quantity) {
@@ -285,13 +300,44 @@
                 }
             }
 
+            // 彈出認證視窗
+            document.getElementById('auth-modal').classList.remove('hidden');
+            document.getElementById('auth-code-input').value = '';
+            document.getElementById('auth-code-input').focus();
+        }
+
+        function closeAuthModal() {
+            document.getElementById('auth-modal').classList.add('hidden');
+        }
+
+        function handleAuthEnter(e) {
+            if (e.key === 'Enter') {
+                verifyAndCheckout();
+            }
+        }
+
+        async function verifyAndCheckout() {
+            const codeInput = document.getElementById('auth-code-input').value.trim();
+
+            // 驗證 Home 成員認證碼
+            if (codeInput !== "my-home-LOK") {
+                alert("❌ 認證碼錯誤！授權失敗。");
+                return;
+            }
+
+            closeAuthModal();
+
+            const totalAmount = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+
+            // 扣減本地庫存
             cart.forEach(item => {
                 let p = products.find(prod => (prod.id === item.id || prod.sku === item.id));
                 if (p) p.stock -= item.quantity;
             });
 
-            updateStatus('正在結帳...', 'bg-yellow-500 text-white');
+            updateStatus('正在送出結帳...', 'bg-yellow-500 text-white');
             try {
+                // 同步更新至 JSONBin 雲端
                 await fetch(`https://api.jsonbin.io/v3/b/${CONFIG.productsBin}`, {
                     method: 'PUT',
                     headers: {
@@ -302,7 +348,7 @@
                 });
 
                 updateStatus('線上運作中', 'bg-emerald-500 text-white');
-                alert(`結帳成功！總金額：$${totalAmount}`);
+                alert(`✅ 授權成功！結帳完成。\n總金額：$${totalAmount}`);
             } catch (err) {
                 alert('雲端庫存同步失敗，請檢查網路連線');
                 console.error('Checkout error:', err);
