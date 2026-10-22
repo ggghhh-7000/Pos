@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Serverless POS 系統 (Cloudflare Pages Ready)</title>
+    <title>Serverless POS 系統 (Debug Ready)</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
@@ -99,7 +99,25 @@
                 if (!res.ok) throw new Error('API 請求失敗');
                 const data = await res.json();
                 
-                products = Array.isArray(data.record) ? data.record : (data.record.products || []);
+                console.log("JSONBin 回傳原始資料:", data);
+
+                // 智慧相容解析：支援直接是陣列、包在 products 裡、或是任意物件中的陣列
+                const rawRecord = data.record;
+                if (Array.isArray(rawRecord)) {
+                    products = rawRecord;
+                } else if (rawRecord && typeof rawRecord === 'object') {
+                    if (Array.isArray(rawRecord.products)) {
+                        products = rawRecord.products;
+                    } else {
+                        // 自動尋找物件內的第一個陣列作為商品清單
+                        const foundKey = Object.keys(rawRecord).find(k => Array.isArray(rawRecord[k]));
+                        products = foundKey ? rawRecord[foundKey] : [];
+                    }
+                } else {
+                    products = [];
+                }
+
+                console.log("解析後的商品陣列:", products);
                 
                 updateStatus('線上運作中', 'bg-emerald-500 text-white');
                 renderProducts();
@@ -132,21 +150,21 @@
             
             if (!grid) return;
 
-            if (list.length === 0) {
-                grid.innerHTML = `<div class="col-span-full text-center text-slate-400 py-10">找不到符合的商品</div>`;
+            if (!list || list.length === 0) {
+                grid.innerHTML = `<div class="col-span-full text-center text-slate-400 py-10">找不到符合的商品（請檢查 JSONBin 資料結構）</div>`;
                 return;
             }
 
             grid.innerHTML = list.map(p => `
-                <div onclick="addToCart('${p.id}')" 
+                <div onclick="addToCart('${p.id || p.sku}')" 
                      class="bg-slate-50 hover:bg-blue-50 border border-slate-200 hover:border-blue-300 rounded-lg p-3 cursor-pointer flex flex-col justify-between transition group shadow-sm">
                     <div>
-                        <div class="text-xs text-slate-400 mb-1">SKU: ${p.sku}</div>
-                        <div class="font-bold text-slate-800 text-sm group-hover:text-blue-600 line-clamp-2">${p.name}</div>
+                        <div class="text-xs text-slate-400 mb-1">SKU: ${p.sku || '-'}</div>
+                        <div class="font-bold text-slate-800 text-sm group-hover:text-blue-600 line-clamp-2">${p.name || '未命名商品'}</div>
                     </div>
                     <div class="mt-3 flex justify-between items-end">
-                        <span class="text-xs ${p.stock > 5 ? 'text-slate-500' : 'text-red-500 font-bold'}">庫存: ${p.stock}</span>
-                        <span class="font-extrabold text-blue-600">$${p.price}</span>
+                        <span class="text-xs ${p.stock > 5 ? 'text-slate-500' : 'text-red-500 font-bold'}">庫存: ${p.stock ?? 0}</span>
+                        <span class="font-extrabold text-blue-600">$${p.price ?? 0}</span>
                     </div>
                 </div>
             `).join('');
@@ -196,10 +214,11 @@
         }
 
         function addToCart(productId) {
-            const product = products.find(p => p.id === productId);
+            const product = products.find(p => (p.id === productId || p.sku === productId));
             if (!product) return;
 
-            const existing = cart.find(item => item.id === productId);
+            const targetId = product.id || product.sku;
+            const existing = cart.find(item => item.id === targetId);
             const currentQtyInCart = existing ? existing.quantity : 0;
 
             if (currentQtyInCart + 1 > product.stock) {
@@ -210,15 +229,15 @@
             if (existing) {
                 existing.quantity += 1;
             } else {
-                cart.push({ id: product.id, name: product.name, price: product.price, quantity: 1 });
+                cart.push({ id: targetId, name: product.name, price: product.price, quantity: 1 });
             }
             renderCart();
         }
 
         function updateQty(productId, change) {
             const item = cart.find(i => i.id === productId);
-            const product = products.find(p => p.id === productId);
-            if (!item) return;
+            const product = products.find(p => (p.id === productId || p.sku === productId));
+            if (!item || !product) return;
 
             if (change > 0 && item.quantity + change > product.stock) {
                 alert(`庫存不足！剩餘庫存: ${product.stock}`);
@@ -243,7 +262,6 @@
             }
         }
 
-        // 搜尋功能核心
         function searchProduct() {
             const inputEl = document.getElementById('barcode-input');
             if (!inputEl) return;
@@ -254,18 +272,8 @@
                 return;
             }
 
-            // 1. 精準比對 SKU
-            const exactSkuMatch = products.find(p => String(p.sku).toLowerCase() === query);
-            if (exactSkuMatch) {
-                addToCart(exactSkuMatch.id);
-                inputEl.value = '';
-                renderProducts();
-                return;
-            }
-
-            // 2. 模糊搜尋名稱或 SKU
             const filtered = products.filter(p => 
-                (p.name && p.name.toLowerCase().includes(query)) || 
+                (p.name && String(p.name).toLowerCase().includes(query)) || 
                 (p.sku && String(p.sku).toLowerCase().includes(query))
             );
             renderProducts(filtered);
@@ -277,7 +285,7 @@
             const totalAmount = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
             
             for (let item of cart) {
-                let p = products.find(prod => prod.id === item.id);
+                let p = products.find(prod => (prod.id === item.id || prod.sku === item.id));
                 if (!p || p.stock < item.quantity) {
                     alert(`結帳失敗：[${item.name}] 庫存不足！`);
                     return;
@@ -285,7 +293,7 @@
             }
 
             cart.forEach(item => {
-                let p = products.find(prod => prod.id === item.id);
+                let p = products.find(prod => (prod.id === item.id || prod.sku === item.id));
                 if (p) p.stock -= item.quantity;
             });
 
