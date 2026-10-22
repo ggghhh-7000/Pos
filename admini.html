@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>專案管理後台 (Serverless Admin)</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-100 h-screen flex flex-col font-sans">
+
+    <!-- ================= 1. 登入畫面 (Login Screen) ================= -->
+    <div id="login-view" class="flex-1 flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-lg p-8 max-w-md w-full border border-slate-200">
+            <div class="text-center mb-6">
+                <h1 class="text-2xl font-bold text-slate-800">🔐 員工登入系統</h1>
+                <p class="text-xs text-slate-500 mt-1">請輸入工號與密碼以存取後台專案資料</p>
+            </div>
+            
+            <form onsubmit="handleLogin(event)" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">員工編號 (Employee ID)</label>
+                    <input type="text" id="login-id" required placeholder="例如：2226" 
+                        class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">密碼 (Password)</label>
+                    <input type="password" id="login-pw" required placeholder="••••••••" 
+                        class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                </div>
+                <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-lg font-bold text-sm shadow transition">
+                    登 入 後 台
+                </button>
+            </form>
+            <div class="mt-4 text-center text-xs text-slate-400">
+                測試工號：<span class="font-mono text-slate-600">2226</span> / 密碼：<span class="font-mono text-slate-600">ggghhh1234</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= 2. 後台管理主畫面 (Dashboard) ================= -->
+    <div id="dashboard-view" class="flex-1 flex flex-col hidden overflow-hidden">
+        
+        <!-- 頂部導覽列 -->
+        <header class="bg-slate-900 text-white px-6 py-3 flex justify-between items-center shadow-md">
+            <div class="flex items-center space-x-3">
+                <h1 class="text-lg font-bold tracking-wide">📂 專案管理後台系統</h1>
+                <span id="sync-status" class="text-xs bg-slate-800 text-slate-300 px-2.5 py-1 rounded border border-slate-700">同步中...</span>
+            </div>
+            <div class="flex items-center space-x-4">
+                <span id="user-display" class="text-xs text-slate-300 font-medium"></span>
+                <button onclick="handleLogout()" class="bg-red-600 hover:bg-red-700 text-xs px-3 py-1.5 rounded transition font-medium">
+                    登出
+                </button>
+            </div>
+        </header>
+
+        <!-- 主內容區 -->
+        <main class="flex-1 p-6 overflow-y-auto max-w-6xl w-full mx-auto">
+            
+            <!-- 操作列：新增專案與搜尋 -->
+            <div class="flex justify-between items-center mb-6">
+                <div class="text-slate-700 font-bold text-lg">專案列表 (Projects)</div>
+                <button onclick="openProjectModal()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-sm font-semibold shadow transition flex items-center gap-1.5">
+                    ➕ 新增專案
+                </button>
+            </div>
+
+            <!-- 專案表格 -->
+            <div class="bg-white rounded-xl shadow border border-slate-200 overflow-hidden">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-slate-50 border-b border-slate-200 text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                            <th class="p-4">專案名稱</th>
+                            <th class="p-4">專案描述</th>
+                            <th class="p-4">負責人</th>
+                            <th class="p-4">狀態</th>
+                            <th class="p-4 text-right">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="project-table-body" class="divide-y divide-slate-100 text-sm text-slate-700">
+                        <!-- 動態填入 -->
+                    </tbody>
+                </table>
+            </div>
+        </main>
+    </div>
+
+    <!-- ================= 3. 新增/編輯專案 Modal ================= -->
+    <div id="project-modal" class="fixed inset-0 bg-black/50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl max-w-lg w-full p-6 shadow-2xl border border-slate-200">
+            <h3 id="modal-title" class="text-lg font-bold mb-4 text-slate-800">新增專案</h3>
+            
+            <form id="project-form" onsubmit="saveProject(event)" class="space-y-4">
+                <input type="hidden" id="proj-id">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">專案名稱</label>
+                    <input type="text" id="proj-name" required placeholder="例如：Q3 智慧零售 POS 系統開發" 
+                        class="w-full border border-slate-300 rounded px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">專案描述</label>
+                    <textarea id="proj-desc" rows="3" placeholder="專案詳細說明與目標..." 
+                        class="w-full border border-slate-300 rounded px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"></textarea>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">負責人</label>
+                        <input type="text" id="proj-owner" required placeholder="例如：2226" 
+                            class="w-full border border-slate-300 rounded px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">專案狀態</label>
+                        <select id="proj-status" class="w-full border border-slate-300 rounded px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                            <option value="規劃中">規劃中</option>
+                            <option value="進行中">進行中</option>
+                            <option value="已結案">已結案</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="mt-6 flex justify-end space-x-2">
+                    <button type="button" onclick="closeProjectModal()" class="px-4 py-2 text-slate-600 text-sm hover:bg-slate-100 rounded-lg">取消</button>
+                    <button type="submit" class="px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 shadow">儲存專案</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ================= JavaScript 邏輯 ================= -->
+    <script>
+        // 設定 JSONBin 憑證
+        const config = {
+            apiKey: '$2a$10$Q3e6T7l53HKgJr3pc5tuW.5dTGTAyi6948TrSpoe7mNIZm6kaRMbm',
+            binId: '6ada2881ffd5d160538304e2'
+        };
+
+        let projects = [];
+        let currentUser = localStorage.getItem('admin_user') || null;
+
+        // 授權員工名單（工號: 密碼）
+        const validEmployees = {
+            '2226': 'ggghhh1234',
+            'admin': '123456',
+            'employee': '8888'
+        };
+
+        // 初始化檢查登入狀態
+        window.onload = () => {
+            if (currentUser) {
+                showDashboard();
+            }
+        };
+
+        // --- 登入控制 ---
+        function handleLogin(e) {
+            e.preventDefault();
+            const id = document.getElementById('login-id').value.trim();
+            const pw = document.getElementById('login-pw').value.trim();
+
+            if (validEmployees[id] && validEmployees[id] === pw) {
+                currentUser = id;
+                localStorage.setItem('admin_user', currentUser);
+                showDashboard();
+            } else {
+                alert('登入失敗：工號或密碼錯誤');
+            }
+        }
+
+        function handleLogout() {
+            localStorage.removeItem('admin_user');
+            currentUser = null;
+            document.getElementById('dashboard-view').classList.add('hidden');
+            document.getElementById('login-view').classList.remove('hidden');
+        }
+
+        async function showDashboard() {
+            document.getElementById('login-view').classList.add('hidden');
+            document.getElementById('dashboard-view').classList.remove('hidden');
+            document.getElementById('user-display').innerText = `當前登入工號: ${currentUser}`;
+            await fetchProjects();
+        }
+
+        // --- 雲端資料同步 (JSONBin CRUD) ---
+        async function fetchProjects() {
+            updateStatus('同步中...', 'bg-yellow-500 text-white');
+            try {
+                const res = await fetch(`https://api.jsonbin.io/v3/b/${config.binId}/latest`, {
+                    headers: { 'X-Master-Key': config.apiKey }
+                });
+                if (!res.ok) throw new Error('讀取資料失敗');
+                const data = await res.json();
+                
+                projects = Array.isArray(data.record) ? data.record : (data.record.projects || []);
+                updateStatus('已連線', 'bg-emerald-500 text-white');
+                renderTable();
+            } catch (err) {
+                console.error(err);
+                updateStatus('離線模式', 'bg-red-500 text-white');
+                if (projects.length === 0) {
+                    projects = [
+                        { id: "PROJ-01", name: "POS 系統前後端串接", desc: "使用純前端與 JSONBin 建立輕量 POS", owner: "2226", status: "進行中" }
+                    ];
+                }
+                renderTable();
+            }
+        }
+
+        async function syncToCloud() {
+            updateStatus('儲存中...', 'bg-yellow-500 text-white');
+            try {
+                await fetch(`https://api.jsonbin.io/v3/b/${config.binId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Master-Key': config.apiKey
+                    },
+                    body: JSON.stringify({ projects })
+                });
+                updateStatus('已同步', 'bg-emerald-500 text-white');
+            } catch (err) {
+                alert('雲端同步失敗，請檢查網路');
+                updateStatus('同步失敗', 'bg-red-500 text-white');
+            }
+        }
+
+        function updateStatus(text, className) {
+            const el = document.getElementById('sync-status');
+            el.innerText = text;
+            el.className = `text-xs px-2.5 py-1 rounded font-medium ${className}`;
+        }
+
+        // --- 渲染表格 ---
+        function renderTable() {
+            const tbody = document.getElementById('project-table-body');
+            if (projects.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" class="p-6 text-center text-slate-400">目前沒有任何專案資料</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = projects.map(p => `
+                <tr class="hover:bg-slate-50 transition border-b border-slate-100 last:border-none">
+                    <td class="p-4 font-semibold text-slate-800">${p.name}</td>
+                    <td class="p-4 text-slate-500 max-w-xs truncate">${p.desc || '-'}</td>
+                    <td class="p-4 text-slate-600">${p.owner}</td>
+                    <td class="p-4">
+                        <span class="px-2.5 py-1 rounded-full text-xs font-semibold 
+                            ${p.status === '進行中' ? 'bg-blue-100 text-blue-700' : p.status === '已結案' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}">
+                            ${p.status}
+                        </span>
+                    </td>
+                    <td class="p-4 text-right space-x-2">
+                        <button onclick="editProject('${p.id}')" class="text-blue-600 hover:underline text-xs font-semibold">編輯</button>
+                        <button onclick="deleteProject('${p.id}')" class="text-red-600 hover:underline text-xs font-semibold">刪除</button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        // --- 專案 Modal 與 CRUD 操作 ---
+        function openProjectModal(isEdit = false) {
+            document.getElementById('project-modal').classList.remove('hidden');
+            document.getElementById('modal-title').innerText = isEdit ? '編輯專案' : '新增專案';
+            if (!isEdit) {
+                document.getElementById('proj-owner').value = currentUser; // 預設負責人為當前登入者
+            }
+        }
+
+        function closeProjectModal() {
+            document.getElementById('project-modal').classList.add('hidden');
+            document.getElementById('project-form').reset();
+            document.getElementById('proj-id').value = '';
+        }
+
+        function editProject(id) {
+            const p = projects.find(item => item.id === id);
+            if (!p) return;
+
+            document.getElementById('proj-id').value = p.id;
+            document.getElementById('proj-name').value = p.name;
+            document.getElementById('proj-desc').value = p.desc;
+            document.getElementById('proj-owner').value = p.owner;
+            document.getElementById('proj-status').value = p.status;
+
+            openProjectModal(true);
+        }
+
+        async function saveProject(e) {
+            e.preventDefault();
+            const id = document.getElementById('proj-id').value;
+            const name = document.getElementById('proj-name').value.trim();
+            const desc = document.getElementById('proj-desc').value.trim();
+            const owner = document.getElementById('proj-owner').value.trim();
+            const status = document.getElementById('proj-status').value;
+
+            if (id) {
+                const p = projects.find(item => item.id === id);
+                if (p) {
+                    p.name = name;
+                    p.desc = desc;
+                    p.owner = owner;
+                    p.status = status;
+                }
+            } else {
+                const newProj = {
+                    id: `PROJ-${Date.now().toString().slice(-6)}`,
+                    name,
+                    desc,
+                    owner,
+                    status
+                };
+                projects.push(newProj);
+            }
+
+            closeProjectModal();
+            renderTable();
+            await syncToCloud();
+        }
+
+        async function deleteProject(id) {
+            if (!confirm('確定要刪除這個專案嗎？')) return;
+            projects = projects.filter(p => p.id !== id);
+            renderTable();
+            await syncToCloud();
+        }
+    </script>
+</body>
+</html>
