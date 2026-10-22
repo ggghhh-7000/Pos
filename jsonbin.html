@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Serverless POS 系統 (Hardcoded)</title>
+    <title>Serverless POS 系統 (Cloudflare Pages Ready)</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
@@ -20,11 +20,11 @@
             <span id="sync-status" class="text-xs bg-slate-700 text-slate-300 px-2 py-1 rounded border border-slate-600">未連線</span>
         </div>
         <div class="text-xs text-slate-400">
-            雲端連線模式 (已寫死憑證)
+            Cloudflare Pages 部署版
         </div>
     </header>
 
-    <!-- 主內容區：左側商品 / 右側購物車 -->
+    <!-- 主內容區 -->
     <main class="flex-1 flex overflow-hidden p-3 gap-3">
         
         <!-- 左側：商品目錄與搜尋 -->
@@ -34,7 +34,7 @@
                 <input type="text" id="barcode-input" placeholder="掃描或輸入 SKU / 商品名稱..." 
                     class="flex-1 border border-slate-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     onkeypress="handleBarcodeEnter(event)">
-                <button onclick="searchProduct()" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 font-medium">
+                <button type="button" onclick="searchProduct()" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 font-medium cursor-pointer">
                     搜尋
                 </button>
             </div>
@@ -77,7 +77,6 @@
 
     <!-- JavaScript 業務邏輯 -->
     <script>
-        // --- 寫死金鑰與倉庫 ID ---
         const CONFIG = {
             apiKey: "$2a$10$Q3e6T7l53HKgJr3pc5tuW.5dTGTAyi6948TrSpoe7mNIZm6kaRMbm",
             productsBin: "6ada2881ffd5d160538304e2"
@@ -86,13 +85,11 @@
         let products = [];
         let cart = [];
 
-        // --- 初始化 ---
         window.onload = async () => {
             await fetchProductsFromCloud();
             renderCart();
         };
 
-        // --- 資料同步 (JSONBin API) ---
         async function fetchProductsFromCloud() {
             updateStatus('同步中...', 'bg-yellow-500 text-white');
             try {
@@ -102,13 +99,12 @@
                 if (!res.ok) throw new Error('API 請求失敗');
                 const data = await res.json();
                 
-                // 兼容直接放陣列或包在 products 物件內的結構
                 products = Array.isArray(data.record) ? data.record : (data.record.products || []);
                 
                 updateStatus('線上運作中', 'bg-emerald-500 text-white');
                 renderProducts();
             } catch (err) {
-                console.warn('雲端同步失敗，切換至本地模式:', err);
+                console.warn('雲端同步失敗，切換至備用模式:', err);
                 updateStatus('離線模式', 'bg-red-500 text-white');
                 useMockProducts();
             }
@@ -116,22 +112,31 @@
 
         function useMockProducts() {
             products = [
-                { id: "P001", sku: "1001", name: "測試商品 (連線失敗備用)", price: 100, stock: 10 }
+                { id: "P001", sku: "1001", name: "美式咖啡 (備用)", price: 65, stock: 50 },
+                { id: "P002", sku: "1002", name: "拿鐵咖啡 (備用)", price: 85, stock: 30 }
             ];
             renderProducts();
         }
 
         function updateStatus(text, className) {
             const el = document.getElementById('sync-status');
-            el.innerText = text;
-            el.className = `text-xs px-2 py-1 rounded font-medium ${className}`;
+            if (el) {
+                el.innerText = text;
+                el.className = `text-xs px-2 py-1 rounded font-medium ${className}`;
+            }
         }
 
-        // --- 介面渲染 ---
         function renderProducts(filteredProducts = null) {
             const grid = document.getElementById('product-grid');
             const list = filteredProducts || products;
             
+            if (!grid) return;
+
+            if (list.length === 0) {
+                grid.innerHTML = `<div class="col-span-full text-center text-slate-400 py-10">找不到符合的商品</div>`;
+                return;
+            }
+
             grid.innerHTML = list.map(p => `
                 <div onclick="addToCart('${p.id}')" 
                      class="bg-slate-50 hover:bg-blue-50 border border-slate-200 hover:border-blue-300 rounded-lg p-3 cursor-pointer flex flex-col justify-between transition group shadow-sm">
@@ -149,6 +154,7 @@
 
         function renderCart() {
             const container = document.getElementById('cart-list');
+            if (!container) return;
             
             if (cart.length === 0) {
                 container.innerHTML = `<p class="text-slate-400 text-center py-10 text-sm">購物車是空的</p>`;
@@ -189,7 +195,6 @@
             document.getElementById('checkout-btn').disabled = false;
         }
 
-        // --- 購物車與搜尋操作 ---
         function addToCart(productId) {
             const product = products.find(p => p.id === productId);
             if (!product) return;
@@ -238,26 +243,34 @@
             }
         }
 
+        // 搜尋功能核心
         function searchProduct() {
-            const query = document.getElementById('barcode-input').value.trim().toLowerCase();
+            const inputEl = document.getElementById('barcode-input');
+            if (!inputEl) return;
+            
+            const query = inputEl.value.trim().toLowerCase();
             if (!query) {
                 renderProducts();
                 return;
             }
 
-            const exactSkuMatch = products.find(p => p.sku.toLowerCase() === query);
+            // 1. 精準比對 SKU
+            const exactSkuMatch = products.find(p => String(p.sku).toLowerCase() === query);
             if (exactSkuMatch) {
                 addToCart(exactSkuMatch.id);
-                document.getElementById('barcode-input').value = '';
+                inputEl.value = '';
                 renderProducts();
                 return;
             }
 
-            const filtered = products.filter(p => p.name.toLowerCase().includes(query) || p.sku.toLowerCase().includes(query));
+            // 2. 模糊搜尋名稱或 SKU
+            const filtered = products.filter(p => 
+                (p.name && p.name.toLowerCase().includes(query)) || 
+                (p.sku && String(p.sku).toLowerCase().includes(query))
+            );
             renderProducts(filtered);
         }
 
-        // --- 結帳與交易邏輯 ---
         async function processCheckout() {
             if (cart.length === 0) return;
 
@@ -276,14 +289,6 @@
                 if (p) p.stock -= item.quantity;
             });
 
-            const orderPayload = {
-                order_id: `ORD-${Date.now()}`,
-                items: cart.map(i => ({ id: i.id, name: i.name, qty: i.quantity, price: i.price })),
-                total_amount: totalAmount,
-                created_at: new Date().toISOString()
-            };
-
-            // 同步更新雲端庫存
             updateStatus('正在送出訂單...', 'bg-yellow-500 text-white');
             try {
                 await fetch(`https://api.jsonbin.io/v3/b/${CONFIG.productsBin}`, {
@@ -296,7 +301,7 @@
                 });
 
                 updateStatus('線上運作中', 'bg-emerald-500 text-white');
-                alert(`結帳成功！單號：${orderPayload.order_id}\n總金額：$${totalAmount}`);
+                alert(`結帳成功！總金額：$${totalAmount}`);
             } catch (err) {
                 alert('雲端更新失敗，請檢查網路連線');
                 console.error('Checkout error:', err);
@@ -304,7 +309,7 @@
             }
 
             cart = [];
-            document.getElementById('barcode-input').value = '';
+            if(document.getElementById('barcode-input')) document.getElementById('barcode-input').value = '';
             renderProducts();
             renderCart();
         }
