@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Serverless POS 系統 (Ready)</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+</head>
+<body class="bg-slate-100 h-screen flex flex-col font-sans overflow-hidden">
+
+    <!-- 頂部導覽列 -->
+    <header class="bg-slate-800 text-white p-3 flex justify-between items-center shadow-md">
+        <div class="flex items-center space-x-3">
+            <h1 class="text-xl font-bold tracking-wide">🛒 EdgePOS System</h1>
+            <span id="sync-status" class="text-xs bg-slate-700 text-slate-300 px-2 py-1 rounded border border-slate-600">未連線</span>
+        </div>
+        <div class="text-xs text-slate-400">
+            Cloudflare Pages 部署版
+        </div>
+    </header>
+
+    <!-- 主內容區 -->
+    <main class="flex-1 flex overflow-hidden p-3 gap-3">
+        
+        <!-- 左側：商品目錄與搜尋 -->
+        <section class="flex-1 flex flex-col bg-white rounded-lg shadow border border-slate-200">
+            <!-- 搜尋列 -->
+            <div class="p-3 border-b border-slate-200 flex gap-2">
+                <input type="text" id="barcode-input" placeholder="掃描或輸入 SKU / 商品名稱..." 
+                    class="flex-1 border border-slate-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    onkeypress="handleBarcodeEnter(event)">
+                <button type="button" onclick="searchProduct()" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 font-medium cursor-pointer">
+                    搜尋
+                </button>
+            </div>
+
+            <!-- 商品卡片列表 -->
+            <div id="product-grid" class="flex-1 p-3 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 overflow-y-auto">
+                <!-- 動態載入商品 -->
+            </div>
+        </section>
+
+        <!-- 右側：購物車與結帳 -->
+        <section class="w-96 bg-white rounded-lg shadow border border-slate-200 flex flex-col">
+            <div class="p-3 border-b border-slate-200 flex justify-between items-center bg-slate-50">
+                <h2 class="font-bold text-slate-700">當前訂單 (Cart)</h2>
+                <button onclick="clearCart()" class="text-xs text-red-500 hover:underline">清空購物車</button>
+            </div>
+
+            <!-- 購物車列表 -->
+            <div id="cart-list" class="flex-1 overflow-y-auto p-3 divide-y divide-slate-100">
+                <p class="text-slate-400 text-center py-10 text-sm">購物車是空的</p>
+            </div>
+
+            <!-- 結帳金額與按鈕 -->
+            <div class="p-4 border-t border-slate-200 bg-slate-50 flex flex-col gap-3">
+                <div class="flex justify-between items-center text-slate-600 text-sm">
+                    <span>項目數量：</span>
+                    <span id="cart-count" class="font-semibold text-slate-800">0</span>
+                </div>
+                <div class="flex justify-between items-baseline">
+                    <span class="text-slate-700 font-bold">總金額：</span>
+                    <span class="text-2xl font-extrabold text-blue-600">$<span id="cart-total">0</span></span>
+                </div>
+                <button onclick="processCheckout()" id="checkout-btn" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-3 rounded-lg font-bold text-lg shadow transition disabled:opacity-50 disabled:cursor-not-allowed">
+                    結 帳 (Checkout)
+                </button>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- JavaScript 業務邏輯 -->
+    <script>
+        // 使用你的新 Bin ID
+        const CONFIG = {
+            apiKey: "$2a$10$Q3e6T7l53HKgJr3pc5tuW.5dTGTAyi6948TrSpoe7mNIZm6kaRMbm",
+            productsBin: "6ada3777ac6210605a49804e"
+        };
+
+        let products = [];
+        let cart = [];
+
+        window.onload = async () => {
+            await fetchProductsFromCloud();
+            renderCart();
+        };
+
+        async function fetchProductsFromCloud() {
+            updateStatus('同步中...', 'bg-yellow-500 text-white');
+            try {
+                const res = await fetch(`https://api.jsonbin.io/v3/b/${CONFIG.productsBin}/latest`, {
+                    headers: { 'X-Master-Key': CONFIG.apiKey }
+                });
+                if (!res.ok) throw new Error('API 請求失敗');
+                const data = await res.json();
+                
+                console.log("JSONBin 回傳原始資料:", data);
+
+                const rawRecord = data.record;
+                if (Array.isArray(rawRecord)) {
+                    products = rawRecord;
+                } else if (rawRecord && typeof rawRecord === 'object') {
+                    if (Array.isArray(rawRecord.products)) {
+                        products = rawRecord.products;
+                    } else {
+                        const foundKey = Object.keys(rawRecord).find(k => Array.isArray(rawRecord[k]));
+                        products = foundKey ? rawRecord[foundKey] : [];
+                    }
+                } else {
+                    products = [];
+                }
+
+                console.log("解析後的商品陣列:", products);
+                
+                updateStatus('線上運作中', 'bg-emerald-500 text-white');
+                renderProducts();
+            } catch (err) {
+                console.warn('雲端同步失敗，切換至備用模式:', err);
+                updateStatus('離線模式', 'bg-red-500 text-white');
+                useMockProducts();
+            }
+        }
+
+        function useMockProducts() {
+            products = [
+                { id: "P001", sku: "1001", name: "美式咖啡 (備用)", price: 65, stock: 50 },
+                { id: "P002", sku: "1002", name: "拿鐵咖啡 (備用)", price: 85, stock: 30 }
+            ];
+            renderProducts();
+        }
+
+        function updateStatus(text, className) {
+            const el = document.getElementById('sync-status');
+            if (el) {
+                el.innerText = text;
+                el.className = `text-xs px-2 py-1 rounded font-medium ${className}`;
+            }
+        }
+
+        function renderProducts(filteredProducts = null) {
+            const grid = document.getElementById('product-grid');
+            const list = filteredProducts || products;
+            
+            if (!grid) return;
+
+            if (!list || list.length === 0) {
+                grid.innerHTML = `<div class="col-span-full text-center text-slate-400 py-10">倉庫中目前沒有商品，請至 JSONBin 確認資料格式</div>`;
+                return;
+            }
+
+            grid.innerHTML = list.map(p => `
+                <div onclick="addToCart('${p.id || p.sku}')" 
+                     class="bg-slate-50 hover:bg-blue-50 border border-slate-200 hover:border-blue-300 rounded-lg p-3 cursor-pointer flex flex-col justify-between transition group shadow-sm">
+                    <div>
+                        <div class="text-xs text-slate-400 mb-1">SKU: ${p.sku || '-'}</div>
+                        <div class="font-bold text-slate-800 text-sm group-hover:text-blue-600 line-clamp-2">${p.name || '未命名商品'}</div>
+                    </div>
+                    <div class="mt-3 flex justify-between items-end">
+                        <span class="text-xs ${p.stock > 5 ? 'text-slate-500' : 'text-red-500 font-bold'}">庫存: ${p.stock ?? 0}</span>
+                        <span class="font-extrabold text-blue-600">$${p.price ?? 0}</span>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function renderCart() {
+            const container = document.getElementById('cart-list');
+            if (!container) return;
+            
+            if (cart.length === 0) {
+                container.innerHTML = `<p class="text-slate-400 text-center py-10 text-sm">購物車是空的</p>`;
+                document.getElementById('cart-count').innerText = 0;
+                document.getElementById('cart-total').innerText = 0;
+                document.getElementById('checkout-btn').disabled = true;
+                return;
+            }
+
+            let total = 0;
+            let count = 0;
+
+            container.innerHTML = cart.map(item => {
+                const subtotal = item.price * item.quantity;
+                total += subtotal;
+                count += item.quantity;
+
+                return `
+                    <div class="py-2.5 flex justify-between items-center text-sm">
+                        <div class="flex-1 pr-2">
+                            <div class="font-semibold text-slate-700">${item.name}</div>
+                            <div class="text-xs text-slate-400">$${item.price} x ${item.quantity}</div>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <span class="font-bold text-slate-800">$${subtotal}</span>
+                            <div class="flex items-center border rounded border-slate-200">
+                                <button onclick="updateQty('${item.id}', -1)" class="px-2 py-0.5 text-slate-600 hover:bg-slate-100">-</button>
+                                <span class="px-1 text-xs font-semibold">${item.quantity}</span>
+                                <button onclick="updateQty('${item.id}', 1)" class="px-2 py-0.5 text-slate-600 hover:bg-slate-100">+</button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            document.getElementById('cart-count').innerText = count;
+            document.getElementById('cart-total').innerText = total;
+            document.getElementById('checkout-btn').disabled = false;
+        }
+
+        function addToCart(productId) {
+            const product = products.find(p => (p.id === productId || p.sku === productId));
+            if (!product) return;
+
+            const targetId = product.id || product.sku;
+            const existing = cart.find(item => item.id === targetId);
+            const currentQtyInCart = existing ? existing.quantity : 0;
+
+            if (currentQtyInCart + 1 > product.stock) {
+                alert(`庫存不足！剩餘庫存: ${product.stock}`);
+                return;
+            }
+
+            if (existing) {
+                existing.quantity += 1;
+            } else {
+                cart.push({ id: targetId, name: product.name, price: product.price, quantity: 1 });
+            }
+            renderCart();
+        }
+
+        function updateQty(productId, change) {
+            const item = cart.find(i => i.id === productId);
+            const product = products.find(p => (p.id === productId || p.sku === productId));
+            if (!item || !product) return;
+
+            if (change > 0 && item.quantity + change > product.stock) {
+                alert(`庫存不足！剩餘庫存: ${product.stock}`);
+                return;
+            }
+
+            item.quantity += change;
+            if (item.quantity <= 0) {
+                cart = cart.filter(i => i.id !== productId);
+            }
+            renderCart();
+        }
+
+        function clearCart() {
+            cart = [];
+            renderCart();
+        }
+
+        function handleBarcodeEnter(e) {
+            if (e.key === 'Enter') {
+                searchProduct();
+            }
+        }
+
+        function searchProduct() {
+            const inputEl = document.getElementById('barcode-input');
+            if (!inputEl) return;
+            
+            const query = inputEl.value.trim().toLowerCase();
+            if (!query) {
+                renderProducts();
+                return;
+            }
+
+            const filtered = products.filter(p => 
+                (p.name && String(p.name).toLowerCase().includes(query)) || 
+                (p.sku && String(p.sku).toLowerCase().includes(query))
+            );
+            renderProducts(filtered);
+        }
+
+        async function processCheckout() {
+            if (cart.length === 0) return;
+
+            const totalAmount = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+            
+            for (let item of cart) {
+                let p = products.find(prod => (prod.id === item.id || prod.sku === item.id));
+                if (!p || p.stock < item.quantity) {
+                    alert(`結帳失敗：[${item.name}] 庫存不足！`);
+                    return;
+                }
+            }
+
+            cart.forEach(item => {
+                let p = products.find(prod => (prod.id === item.id || prod.sku === item.id));
+                if (p) p.stock -= item.quantity;
+            });
+
+            updateStatus('正在送出訂單...', 'bg-yellow-500 text-white');
+            try {
+                await fetch(`https://api.jsonbin.io/v3/b/${CONFIG.productsBin}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Master-Key': CONFIG.apiKey
+                    },
+                    body: JSON.stringify({ products })
+                });
+
+                updateStatus('線上運作中', 'bg-emerald-500 text-white');
+                alert(`結帳成功！總金額：$${totalAmount}`);
+            } catch (err) {
+                alert('雲端更新失敗，請檢查網路連線');
+                console.error('Checkout error:', err);
+                updateStatus('離線模式', 'bg-red-500 text-white');
+            }
+
+            cart = [];
+            if(document.getElementById('barcode-input')) document.getElementById('barcode-input').value = '';
+            renderProducts();
+            renderCart();
+        }
+    </script>
+</body>
+</html>
