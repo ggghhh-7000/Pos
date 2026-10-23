@@ -1,0 +1,674 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LOK 家族首頁 | LOK Family Portal</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary-color: #2b5876;
+      --secondary-color: #4e4376;
+      --accent-color: #ff7e5f;
+      --bg-color: #f8f9fa;
+      --card-bg: #ffffff;
+      --text-main: #2d3748;
+      --text-muted: #718096;
+      --border-radius: 16px;
+      --shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
+      --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Noto Sans TC', -apple-system, BlinkMacSystemFont, sans-serif;
+      background-color: var(--bg-color);
+      color: var(--text-main);
+      line-height: 1.6;
+    }
+
+    /* Header */
+    header {
+      background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+      color: white;
+      padding: 60px 20px 80px;
+      text-align: center;
+      position: relative;
+      border-bottom-left-radius: 32px;
+      border-bottom-right-radius: 32px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+    }
+
+    .header-content {
+      max-width: 800px;
+      margin: 0 auto;
+    }
+
+    .logo {
+      font-size: 2.5rem;
+      font-weight: 700;
+      letter-spacing: 2px;
+      margin-bottom: 8px;
+      background: linear-gradient(to right, #ffffff, #feb47b);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .tagline {
+      font-size: 1.05rem;
+      opacity: 0.9;
+      font-weight: 300;
+    }
+
+    /* Main Container */
+    main {
+      max-width: 1080px;
+      margin: -40px auto 60px;
+      padding: 0 20px;
+    }
+
+    /* Section Headings */
+    .section-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin: 35px 0 18px;
+    }
+
+    .section-title {
+      font-size: 1.3rem;
+      font-weight: 700;
+      color: var(--primary-color);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn {
+      padding: 8px 16px;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      font-size: 0.9rem;
+      font-weight: 500;
+      transition: var(--transition);
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .btn-primary {
+      background-color: var(--primary-color);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background-color: var(--secondary-color);
+    }
+
+    .btn-outline {
+      background-color: transparent;
+      border: 1px solid var(--primary-color);
+      color: var(--primary-color);
+    }
+
+    .btn-outline:hover {
+      background-color: rgba(43, 88, 118, 0.08);
+    }
+
+    .btn-danger {
+      background-color: #e53e3e;
+      color: white;
+    }
+
+    .btn-danger:hover {
+      background-color: #c53030;
+    }
+
+    /* Notice Board Section */
+    .notice-board {
+      background: var(--card-bg);
+      border-radius: var(--border-radius);
+      padding: 24px;
+      box-shadow: var(--shadow);
+    }
+
+    .notice-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 0;
+      border-bottom: 1px solid #edf2f7;
+    }
+
+    .notice-item:last-child {
+      border-bottom: none;
+    }
+
+    .notice-tag {
+      background: rgba(255, 126, 95, 0.12);
+      color: var(--accent-color);
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    .notice-text {
+      flex-grow: 1;
+      margin: 0 15px;
+      font-size: 0.95rem;
+    }
+
+    .notice-date {
+      color: var(--text-muted);
+      font-size: 0.85rem;
+      white-space: nowrap;
+    }
+
+    /* Quick Links Grid */
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 20px;
+    }
+
+    .card {
+      background: var(--card-bg);
+      border-radius: var(--border-radius);
+      padding: 24px;
+      box-shadow: var(--shadow);
+      transition: var(--transition);
+      text-decoration: none;
+      color: inherit;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      border: 1px solid rgba(0, 0, 0, 0.03);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 4px;
+      background: linear-gradient(90deg, var(--primary-color), var(--accent-color));
+      opacity: 0;
+      transition: var(--transition);
+    }
+
+    .card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    }
+
+    .card:hover::before {
+      opacity: 1;
+    }
+
+    .card-icon {
+      font-size: 2.2rem;
+      margin-bottom: 12px;
+    }
+
+    .card-title {
+      font-size: 1.2rem;
+      font-weight: 700;
+      margin-bottom: 8px;
+      color: var(--text-main);
+    }
+
+    .card-desc {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+    }
+
+    /* Modal Styling */
+    .modal-backdrop {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.5);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+      padding: 20px;
+    }
+
+    .modal {
+      background: var(--card-bg);
+      border-radius: var(--border-radius);
+      max-width: 600px;
+      width: 100%;
+      max-height: 90vh;
+      overflow-y: auto;
+      padding: 28px;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      border-bottom: 1px solid #edf2f7;
+      padding-bottom: 12px;
+    }
+
+    .modal-title {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--primary-color);
+    }
+
+    .close-btn {
+      background: transparent;
+      border: none;
+      font-size: 1.5rem;
+      cursor: pointer;
+      color: var(--text-muted);
+    }
+
+    .form-group {
+      margin-bottom: 16px;
+    }
+
+    .form-group label {
+      display: block;
+      margin-bottom: 6px;
+      font-weight: 500;
+      font-size: 0.9rem;
+    }
+
+    .form-group input, .form-group select, .form-group textarea {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid #cbd5e0;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      font-family: inherit;
+    }
+
+    .admin-notice-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 0;
+      border-bottom: 1px solid #edf2f7;
+      gap: 10px;
+    }
+
+    .admin-notice-item .info {
+      flex-grow: 1;
+    }
+
+    .status-msg {
+      font-size: 0.85rem;
+      margin-top: 6px;
+    }
+    .status-success { color: #38a169; }
+    .status-error { color: #e53e3e; }
+
+    /* Footer */
+    footer {
+      text-align: center;
+      padding: 30px 20px;
+      color: var(--text-muted);
+      font-size: 0.88rem;
+      border-top: 1px solid #e2e8f0;
+      margin-top: 40px;
+    }
+
+    @media (max-width: 600px) {
+      header { padding: 40px 20px 60px; }
+      .logo { font-size: 2rem; }
+      .notice-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 6px;
+      }
+      .notice-text { margin: 0; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Header Section -->
+  <header>
+    <div class="header-content">
+      <div class="logo">LOK 家族資訊網</div>
+      <p class="tagline">共享生活時刻 ‧ 家族資訊交流中心</p>
+    </div>
+  </header>
+
+  <!-- Main Content Area -->
+  <main>
+    <!-- Notice Board -->
+    <div class="section-header">
+      <h2 class="section-title">📌 最新公告</h2>
+      <button class="btn btn-outline" id="openAdminBtn">⚙️ 後台管理</button>
+    </div>
+    
+    <div class="notice-board" id="noticeContainer">
+      <div style="text-align: center; color: var(--text-muted); padding: 20px;">
+        載入中，請稍候...
+      </div>
+    </div>
+
+    <!-- Family Services & Links -->
+    <h2 class="section-title">🚀 家族快捷服務</h2>
+    <div class="grid">
+      <a href="#" class="card">
+        <div>
+          <div class="card-icon">📸</div>
+          <div class="card-title">家族相簿</div>
+          <div class="card-desc">記錄與分享每一個美好時光，典藏共同的溫馨回憶。</div>
+        </div>
+      </a>
+
+      <a href="#" class="card">
+        <div>
+          <div class="card-icon">📅</div>
+          <div class="card-title">活動行事曆</div>
+          <div class="card-desc">查看生日、聚會及家族重要紀念日，不再錯過任何時刻。</div>
+        </div>
+      </a>
+
+      <a href="#" class="card">
+        <div>
+          <div class="card-icon">💬</div>
+          <div class="card-title">家族留言板</div>
+          <div class="card-desc">溫馨互動與近況交流的專屬小天地。</div>
+        </div>
+      </a>
+
+      <a href="#" class="card">
+        <div>
+          <div class="card-icon">📁</div>
+          <div class="card-title">共享雲端</div>
+          <div class="card-desc">重要文件、旅遊攻略與家族資料安全的存放區。</div>
+        </div>
+      </a>
+    </div>
+  </main>
+
+  <!-- Admin Modal -->
+  <div class="modal-backdrop" id="adminModal">
+    <div class="modal">
+      <div class="modal-header">
+        <div class="modal-title">⚙️ 後台公告管理</div>
+        <button class="close-btn" id="closeAdminBtn">&times;</button>
+      </div>
+
+      <!-- JSONBin Settings -->
+      <details open style="margin-bottom: 20px; border: 1px solid #e2e8f0; padding: 12px; border-radius: 8px;">
+        <summary style="font-weight: bold; cursor: pointer; color: var(--primary-color);">🔗 JSONBin API 設定</summary>
+        <div style="margin-top: 12px;">
+          <div class="form-group">
+            <label>Bin ID:</label>
+            <input type="text" id="binIdInput" placeholder="例如：65123456789abcdef">
+          </div>
+          <div class="form-group">
+            <label>Master Key ($2a$10$...):</label>
+            <input type="password" id="apiKeyInput" placeholder="輸入您的 jsonbin Master Key">
+          </div>
+          <button class="btn btn-primary" id="saveApiBtn">儲存金鑰並重新載入</button>
+          <div id="apiStatusMsg" class="status-msg"></div>
+        </div>
+      </details>
+
+      <!-- Add New Notice -->
+      <div style="margin-bottom: 20px; border: 1px solid #e2e8f0; padding: 12px; border-radius: 8px;">
+        <h3 style="font-size: 1rem; margin-bottom: 10px; color: var(--primary-color);">➕ 新增公告事項</h3>
+        <div class="form-group">
+          <label>標籤類別：</label>
+          <select id="newNoticeTag">
+            <option value="活動">活動</option>
+            <option value="重要">重要</option>
+            <option value="系統">系統</option>
+            <option value="溫馨">溫馨</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>公告內容：</label>
+          <textarea id="newNoticeText" rows="3" placeholder="請輸入公告內容..."></textarea>
+        </div>
+        <button class="btn btn-primary" id="addNoticeBtn">新增公告</button>
+      </div>
+
+      <!-- Current Notices List -->
+      <div>
+        <h3 style="font-size: 1rem; margin-bottom: 10px; color: var(--primary-color);">📋 目前公告列表</h3>
+        <div id="adminNoticeList">
+          <!-- Administrative Notice Items injected here -->
+        </div>
+      </div>
+
+      <div style="margin-top: 20px; text-align: right;">
+        <button class="btn btn-primary" id="syncToCloudBtn" style="background-color: #38a169;">☁️ 儲存並同步至雲端</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer>
+    <p>© LOK Family. All Rights Reserved.</p>
+  </footer>
+
+  <script>
+    // Local memory storage for notices
+    let currentNotices = [];
+
+    // Keys stored in LocalStorage for convenience
+    let binId = localStorage.getItem('lok_jsonbin_id') || '';
+    let apiKey = localStorage.getItem('lok_jsonbin_key') || '';
+
+    // DOM Elements
+    const noticeContainer = document.getElementById('noticeContainer');
+    const adminModal = document.getElementById('adminModal');
+    const openAdminBtn = document.getElementById('openAdminBtn');
+    const closeAdminBtn = document.getElementById('closeAdminBtn');
+    const binIdInput = document.getElementById('binIdInput');
+    const apiKeyInput = document.getElementById('apiKeyInput');
+    const saveApiBtn = document.getElementById('saveApiBtn');
+    const apiStatusMsg = document.getElementById('apiStatusMsg');
+    const addNoticeBtn = document.getElementById('addNoticeBtn');
+    const syncToCloudBtn = document.getElementById('syncToCloudBtn');
+
+    // Default Fallback Data if no cloud connected
+    const fallbackNotices = [
+      { id: '1', tag: '活動', text: '歡迎來到 LOK 家族首頁！請點擊右上角「後台管理」設定 jsonbin 連線。', date: new Date().toISOString().split('T')[0] }
+    ];
+
+    // Initial Load
+    window.addEventListener('DOMContentLoaded', () => {
+      binIdInput.value = binId;
+      apiKeyInput.value = apiKey;
+
+      if (binId && apiKey) {
+        fetchNoticesFromCloud();
+      } else {
+        currentNotices = fallbackNotices;
+        renderNotices();
+      }
+    });
+
+    // Fetch Notices from JSONBin.io
+    async function fetchNoticesFromCloud() {
+      noticeContainer.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 20px;">正在從 jsonbin 載入公告...</div>';
+      try {
+        const response = await fetch(`https://api.jsonbin.io/v3/b/${binId}/latest`, {
+          method: 'GET',
+          headers: {
+            'X-Master-Key': apiKey
+          }
+        });
+
+        if (!response.ok) throw new Error('無法存取，請檢查 Bin ID 與 Key 設定。');
+
+        const data = await response.json();
+        // Assume structure is { notices: [...] }
+        if (data.record && Array.isArray(data.record.notices)) {
+          currentNotices = data.record.notices;
+        } else if (Array.isArray(data.record)) {
+          currentNotices = data.record;
+        } else {
+          currentNotices = [];
+        }
+
+        renderNotices();
+      } catch (err) {
+        noticeContainer.innerHTML = `<div style="text-align: center; color: #e53e3e; padding: 20px;">載入失敗：${err.message}</div>`;
+      }
+    }
+
+    // Render Notices to Main Page
+    function renderNotices() {
+      if (currentNotices.length === 0) {
+        noticeContainer.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 20px;">目前尚無公告。</div>';
+        return;
+      }
+
+      noticeContainer.innerHTML = currentNotices.map(item => `
+        <div class="notice-item">
+          <span class="notice-tag">${escapeHtml(item.tag || '公告')}</span>
+          <span class="notice-text">${escapeHtml(item.text)}</span>
+          <span class="notice-date">${escapeHtml(item.date)}</span>
+        </div>
+      `).join('');
+    }
+
+    // Render Admin Notice List in Modal
+    function renderAdminNoticeList() {
+      const adminNoticeList = document.getElementById('adminNoticeList');
+      if (currentNotices.length === 0) {
+        adminNoticeList.innerHTML = '<div style="color: var(--text-muted); font-size: 0.9rem;">目前沒有任何公告</div>';
+        return;
+      }
+
+      adminNoticeList.innerHTML = currentNotices.map((item, index) => `
+        <div class="admin-notice-item">
+          <div class="info">
+            <span class="notice-tag" style="margin-right: 6px;">${escapeHtml(item.tag)}</span>
+            <span style="font-size: 0.9rem;">${escapeHtml(item.text)}</span>
+            <div style="font-size: 0.75rem; color: var(--text-muted);">${escapeHtml(item.date)}</div>
+          </div>
+          <button class="btn btn-danger" onclick="deleteNotice(${index})" style="padding: 4px 8px; font-size: 0.8rem;">刪除</button>
+        </div>
+      `).join('');
+    }
+
+    // Add New Notice
+    addNoticeBtn.addEventListener('click', () => {
+      const tag = document.getElementById('newNoticeTag').value;
+      const text = document.getElementById('newNoticeText').value.trim();
+
+      if (!text) {
+        alert('請輸入公告內容');
+        return;
+      }
+
+      const newNotice = {
+        id: Date.now().toString(),
+        tag: tag,
+        text: text,
+        date: new Date().toISOString().split('T')[0]
+      };
+
+      currentNotices.unshift(newNotice);
+      document.getElementById('newNoticeText').value = '';
+      renderAdminNoticeList();
+      renderNotices();
+    });
+
+    // Delete Notice
+    window.deleteNotice = function(index) {
+      currentNotices.splice(index, 1);
+      renderAdminNoticeList();
+      renderNotices();
+    };
+
+    // Sync Data to JSONBin.io Cloud
+    syncToCloudBtn.addEventListener('click', async () => {
+      if (!binId || !apiKey) {
+        alert('請先填寫並儲存 Bin ID 與 Master Key！');
+        return;
+      }
+
+      syncToCloudBtn.innerText = '同步中...';
+      syncToCloudBtn.disabled = true;
+
+      try {
+        const response = await fetch(`https://api.jsonbin.io/v3/b/${binId}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Master-Key': apiKey
+          },
+          body: JSON.stringify({ notices: currentNotices })
+        });
+
+        if (!response.ok) throw new Error('同步失敗，請檢查權限或 Key。');
+
+        alert('成功更新並同步至 jsonbin！');
+      } catch (err) {
+        alert(`同步出錯: ${err.message}`);
+      } finally {
+        syncToCloudBtn.innerText = '☁️ 儲存並同步至雲端';
+        syncToCloudBtn.disabled = false;
+      }
+    });
+
+    // Save API Settings
+    saveApiBtn.addEventListener('click', () => {
+      binId = binIdInput.value.trim();
+      apiKey = apiKeyInput.value.trim();
+
+      localStorage.setItem('lok_jsonbin_id', binId);
+      localStorage.setItem('lok_jsonbin_key', apiKey);
+
+      apiStatusMsg.className = 'status-msg status-success';
+      apiStatusMsg.innerText = '金鑰已儲存！正在重新載入資料...';
+
+      if (binId && apiKey) {
+        fetchNoticesFromCloud();
+      }
+    });
+
+    // Modal Visibility Control
+    openAdminBtn.addEventListener('click', () => {
+      renderAdminNoticeList();
+      adminModal.style.display = 'flex';
+    });
+
+    closeAdminBtn.addEventListener('click', () => {
+      adminModal.style.display = 'none';
+    });
+
+    // Helper: Utility to prevent XSS
+    function escapeHtml(str) {
+      if (!str) return '';
+      return str.replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+    }
+  </script>
+</body>
+</html>
