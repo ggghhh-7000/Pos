@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>POS 後台管理與 KDS 廚房系統</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-100 h-screen flex flex-col font-sans">
+
+    <!-- ================= 1. 登入畫面 ================= -->
+    <div id="login-view" class="flex-1 flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-lg p-8 max-w-md w-full border border-slate-200">
+            <div class="text-center mb-6">
+                <h1 class="text-2xl font-bold text-slate-800">🔐 POS 後台與廚房登入</h1>
+                <p class="text-xs text-slate-500 mt-1">請輸入工號與密碼以存取後台管理與即時訂單</p>
+            </div>
+            
+            <form onsubmit="handleLogin(event)" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">員工編號 (Employee ID)</label>
+                    <input type="text" id="login-id" required placeholder="例如：2226" 
+                        class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">密碼 (Password)</label>
+                    <input type="password" id="login-pw" required placeholder="••••••••" 
+                        class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                </div>
+                <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-lg font-bold text-sm shadow transition">
+                    登 入 後 台
+                </button>
+            </form>
+            <div class="mt-4 text-center text-xs text-slate-400">
+                授權工號：<span class="font-mono text-slate-600">2226</span> / 密碼：<span class="font-mono text-slate-600">ggghhh1234</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= 2. 後台主畫面 ================= -->
+    <div id="dashboard-view" class="flex-1 flex flex-col hidden overflow-hidden">
+        
+        <!-- 頂部導覽列 -->
+        <header class="bg-slate-900 text-white px-6 py-3 flex justify-between items-center shadow-md">
+            <div class="flex items-center space-x-3">
+                <h1 class="text-lg font-bold tracking-wide">📦 POS 管理後台 & 廚房系統 (KDS)</h1>
+                <span id="sync-status" class="text-xs bg-slate-800 text-slate-300 px-2.5 py-1 rounded border border-slate-700">同步中...</span>
+            </div>
+            <div class="flex items-center space-x-4">
+                <span id="user-display" class="text-xs text-slate-300 font-medium"></span>
+                <button onclick="handleLogout()" class="bg-red-600 hover:bg-red-700 text-xs px-3 py-1.5 rounded transition font-medium">
+                    登出
+                </button>
+            </div>
+        </header>
+
+        <!-- 分頁切換列 -->
+        <nav class="bg-white border-b border-slate-200 px-6 flex space-x-4">
+            <button onclick="switchTab('products')" id="tab-products-btn" class="py-3 px-4 text-sm font-bold border-b-2 border-blue-600 text-blue-600 transition">
+                📦 商品與庫存管理
+            </button>
+            <button onclick="switchTab('orders')" id="tab-orders-btn" class="py-3 px-4 text-sm font-semibold border-b-2 border-transparent text-slate-500 hover:text-slate-800 transition">
+                📋 即時訂單與 KDS 廚房接單
+            </button>
+        </nav>
+
+        <!-- 主內容區 -->
+        <main class="flex-1 p-6 overflow-y-auto max-w-6xl w-full mx-auto">
+            
+            <!-- 分頁 A：商品管理 -->
+            <div id="section-products" class="space-y-4">
+                <div class="flex justify-between items-center mb-4">
+                    <div class="text-slate-700 font-bold text-base">商品清單管理 (Products)</div>
+                    <div class="space-x-2">
+                        <button onclick="loadCloudData()" class="bg-slate-600 hover:bg-slate-700 text-white px-3 py-2 rounded-lg text-sm font-semibold shadow transition">🔄 重新載入</button>
+                        <button onclick="openProductModal()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-sm font-semibold shadow transition">➕ 新增商品</button>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-xl shadow border border-slate-200 overflow-hidden">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-slate-50 border-b border-slate-200 text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                                <th class="p-4">SKU / 條碼</th>
+                                <th class="p-4">商品名稱</th>
+                                <th class="p-4">售價 ($)</th>
+                                <th class="p-4">庫存量</th>
+                                <th class="p-4 text-right">操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="product-table-body" class="divide-y divide-slate-100 text-sm text-slate-700"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- 分頁 B：KDS 廚房即時訂單管理 -->
+            <div id="section-orders" class="space-y-4" style="display:none;">
+                <div class="flex justify-between items-center mb-4">
+                    <div class="text-slate-700 font-bold text-base">即時點餐訂單 (Kitchen Display System)</div>
+                    <button onclick="loadCloudData()" class="bg-slate-600 hover:bg-slate-700 text-white px-3 py-2 rounded-lg text-sm font-semibold shadow transition">🔄 重新整理訂單</button>
+                </div>
+
+                <!-- 訂單卡片網格 -->
+                <div id="orders-grid" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <!-- 動態載入訂單 -->
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <!-- ================= 3. 新增/編輯商品 Modal ================= -->
+    <div id="product-modal" class="fixed inset-0 bg-black/50 hidden flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-xl max-w-md w-full p-6 shadow-2xl border border-slate-200">
+            <h3 id="modal-title" class="text-lg font-bold mb-4 text-slate-800">新增商品</h3>
+            
+            <form id="product-form" onsubmit="saveProduct(event)" class="space-y-4">
+                <input type="hidden" id="prod-id">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">SKU / 條碼編號</label>
+                    <input type="text" id="prod-sku" required placeholder="例如：1001" 
+                        class="w-full border border-slate-300 rounded px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">商品名稱</label>
+                    <input type="text" id="prod-name" required placeholder="例如：拿鐵咖啡" 
+                        class="w-full border border-slate-300 rounded px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">售價 ($)</label>
+                        <input type="number" id="prod-price" required min="0" placeholder="85" 
+                            class="w-full border border-slate-300 rounded px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">初始庫存量</label>
+                        <input type="number" id="prod-stock" required min="0" placeholder="30" 
+                            class="w-full border border-slate-300 rounded px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                    </div>
+                </div>
+
+                <div class="mt-6 flex justify-end space-x-2">
+                    <button type="button" onclick="closeProductModal()" class="px-4 py-2 text-slate-600 text-sm hover:bg-slate-100 rounded-lg">取消</button>
+                    <button type="submit" class="px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 shadow">儲存商品</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- JavaScript 邏輯 -->
+    <script>
+        const CONFIG = {
+            apiKey: "$2a$10$Q3e6T7l53HKgJr3pc5tuW.5dTGTAyi6948TrSpoe7mNIZm6kaRMbm",
+            binId: "6ada3777ac6210605a49804e"
+        };
+
+        let products = [];
+        let orders = [];
+        let currentUser = localStorage.getItem('admin_user') || null;
+
+        const validEmployees = {
+            '2226': 'ggghhh1234',
+            'admin': '123456'
+        };
+
+        window.onload = () => {
+            if (currentUser) {
+                showDashboard();
+            }
+        };
+
+        function handleLogin(e) {
+            e.preventDefault();
+            const id = document.getElementById('login-id').value.trim();
+            const pw = document.getElementById('login-pw').value.trim();
+
+            if (validEmployees[id] && validEmployees[id] === pw) {
+                currentUser = id;
+                localStorage.setItem('admin_user', currentUser);
+                showDashboard();
+            } else {
+                alert('登入失敗：工號或密碼錯誤');
+            }
+        }
+
+        function handleLogout() {
+            localStorage.removeItem('admin_user');
+            currentUser = null;
+            document.getElementById('dashboard-view').classList.add('hidden');
+            document.getElementById('login-view').classList.remove('hidden');
+        }
+
+        async function showDashboard() {
+            document.getElementById('login-view').classList.add('hidden');
+            document.getElementById('dashboard-view').classList.remove('hidden');
+            document.getElementById('user-display').innerText = `當前登入工號: ${currentUser}`;
+            await loadCloudData();
+        }
+
+        function switchTab(tabName) {
+            const prodSec = document.getElementById('section-products');
+            const ordSec = document.getElementById('section-orders');
+            const prodBtn = document.getElementById('tab-products-btn');
+            const ordBtn = document.getElementById('tab-orders-btn');
+
+            if (tabName === 'products') {
+                prodSec.style.display = 'block';
+                ordSec.style.display = 'none';
+                prodBtn.className = "py-3 px-4 text-sm font-bold border-b-2 border-blue-600 text-blue-600 transition";
+                ordBtn.className = "py-3 px-4 text-sm font-semibold border-b-2 border-transparent text-slate-500 hover:text-slate-800 transition";
+            } else {
+                prodSec.style.display = 'none';
+                ordSec.style.display = 'block';
+                ordBtn.className = "py-3 px-4 text-sm font-bold border-b-2 border-blue-600 text-blue-600 transition";
+                prodBtn.className = "py-3 px-4 text-sm font-semibold border-b-2 border-transparent text-slate-500 hover:text-slate-800 transition";
+                renderOrdersGrid();
+            }
+        }
+
+        async function loadCloudData() {
+            updateStatus('同步中...', 'bg-yellow-500 text-white');
+            try {
+                const res = await fetch(`https://api.jsonbin.io/v3/b/${CONFIG.binId}/latest`, {
+                    headers: { 'X-Master-Key': CONFIG.apiKey }
+                });
+                if (!res.ok) throw new Error('讀取資料失敗');
+                const data = await res.json();
+                
+                const rawRecord = data.record;
+                if (rawRecord && typeof rawRecord === 'object') {
+                    products = Array.isArray(rawRecord.products) ? rawRecord.products : (Array.isArray(rawRecord) ? rawRecord : []);
+                    orders = Array.isArray(rawRecord.orders) ? rawRecord.orders : [];
+                } else {
+                    products = [];
+                    orders = [];
+                }
+
+                updateStatus('已連線', 'bg-emerald-500 text-white');
+                renderTable();
+                renderOrdersGrid();
+            } catch (err) {
+                console.error(err);
+                updateStatus('連線失敗', 'bg-red-500 text-white');
+                renderTable();
+                renderOrdersGrid();
+            }
+        }
+
+        async function syncToCloud() {
+            updateStatus('儲存中...', 'bg-yellow-500 text-white');
+            try {
+                await fetch(`https://api.jsonbin.io/v3/b/${CONFIG.binId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Master-Key': CONFIG.apiKey
+                    },
+                    body: JSON.stringify({ products, orders })
+                });
+                updateStatus('已同步', 'bg-emerald-500 text-white');
+            } catch (err) {
+                alert('雲端同步失敗，請檢查網路');
+                updateStatus('同步失敗', 'bg-red-500 text-white');
+            }
+        }
+
+        function updateStatus(text, className) {
+            const el = document.getElementById('sync-status');
+            if(el) {
+                el.innerText = text;
+                el.className = `text-xs px-2.5 py-1 rounded font-medium ${className}`;
+            }
+        }
+
+        // --- 商品管理表格渲染 ---
+        function renderTable() {
+            const tbody = document.getElementById('product-table-body');
+            if (!tbody) return;
+
+            if (products.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" class="p-6 text-center text-slate-400">目前沒有任何商品，請點擊右上角新增</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = products.map(p => `
+                <tr class="hover:bg-slate-50 transition border-b border-slate-100 last:border-none">
+                    <td class="p-4 font-mono font-semibold text-slate-800">${p.sku || '-'}</td>
+                    <td class="p-4 font-bold text-slate-800">${p.name || '-'}</td>
+                    <td class="p-4 text-blue-600 font-extrabold">$${p.price ?? 0}</td>
+                    <td class="p-4">
+                        <span class="px-2.5 py-1 rounded-full text-xs font-semibold ${p.stock > 5 ? 'bg-slate-100 text-slate-700' : 'bg-red-100 text-red-700'}">
+                            ${p.stock ?? 0} 件
+                        </span>
+                    </td>
+                    <td class="p-4 text-right space-x-2">
+                        <button onclick="editProduct('${p.id || p.sku}')" class="text-blue-600 hover:underline text-xs font-semibold">編輯</button>
+                        <button onclick="deleteProduct('${p.id || p.sku}')" class="text-red-600 hover:underline text-xs font-semibold">刪除</button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function openProductModal(isEdit = false) {
+            document.getElementById('product-modal').classList.remove('hidden');
+            document.getElementById('modal-title').innerText = isEdit ? '編輯商品' : '新增商品';
+        }
+
+        function closeProductModal() {
+            document.getElementById('product-modal').classList.add('hidden');
+            document.getElementById('product-form').reset();
+            document.getElementById('prod-id').value = '';
+        }
+
+        function editProduct(targetId) {
+            const p = products.find(item => (item.id === targetId || item.sku === targetId));
+            if (!p) return;
+
+            document.getElementById('prod-id').value = p.id || p.sku;
+            document.getElementById('prod-sku').value = p.sku || '';
+            document.getElementById('prod-name').value = p.name || '';
+            document.getElementById('prod-price').value = p.price ?? 0;
+            document.getElementById('prod-stock').value = p.stock ?? 0;
+
+            openProductModal(true);
+        }
+
+        async function saveProduct(e) {
+            e.preventDefault();
+            const targetId = document.getElementById('prod-id').value;
+            const sku = document.getElementById('prod-sku').value.trim();
+            const name = document.getElementById('prod-name').value.trim();
+            const price = Number(document.getElementById('prod-price').value);
+            const stock = Number(document.getElementById('prod-stock').value);
+
+            if (targetId) {
+                const p = products.find(item => (item.id === targetId || item.sku === targetId));
+                if (p) {
+                    p.sku = sku;
+                    p.name = name;
+                    p.price = price;
+                    p.stock = stock;
+                }
+            } else {
+                const newProd = { id: `P-${Date.now()}`, sku, name, price, stock };
+                products.push(newProd);
+            }
+
+            closeProductModal();
+            renderTable();
+            await syncToCloud();
+        }
+
+        async function deleteProduct(targetId) {
+            if (!confirm('確定要刪除這項商品嗎？')) return;
+            products = products.filter(item => !(item.id === targetId || item.sku === targetId));
+            renderTable();
+            await syncToCloud();
+        }
+
+        // --- KDS 廚房訂單系統渲染 ---
+        function renderOrdersGrid() {
+            const grid = document.getElementById('orders-grid');
+            if (!grid) return;
+
+            if (!orders || orders.length === 0) {
+                grid.innerHTML = `<div class="col-span-full text-center text-slate-400 py-12 bg-white rounded-xl border border-slate-200">目前尚無任何點餐訂單</div>`;
+                return;
+            }
+
+            // 依時間倒序排列（最新的在最上面）
+            const sortedOrders = [...orders].reverse();
+
+            grid.innerHTML = sortedOrders.map(o => {
+                const isCompleted = o.status === '已製作完成';
+                return `
+                    <div class="bg-white rounded-xl shadow-sm border ${isCompleted ? 'border-emerald-300 bg-emerald-50/20' : 'border-amber-300 bg-amber-50/20'} p-5 flex flex-col justify-between">
+                        <div>
+                            <div class="flex justify-between items-start mb-2">
+                                <div>
+                                    <span class="font-bold text-slate-800 text-base font-mono">${o.orderId}</span>
+                                    <div class="text-xs text-slate-400">${o.time}</div>
+                                </div>
+                                <span class="px-3 py-1 rounded-full text-xs font-bold ${isCompleted ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700 animate-pulse'}">
+                                    ${o.status || '未製作完成'}
+                                </span>
+                            </div>
+                            <div class="text-xs text-slate-500 mb-2">${o.method} | ${o.invTypeName || '二聯式發票'}</div>
+                            
+                            <div class="border-t border-b border-slate-200 py-2 my-2 space-y-1">
+                                ${o.items.map(i => `
+                                    <div class="flex justify-between text-sm">
+                                        <span class="font-medium text-slate-700">${i.name}</span>
+                                        <span class="text-slate-600 font-bold">x ${i.quantity} ($${i.price * i.quantity})</span>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+
+                        <div class="pt-3 flex justify-between items-center mt-2 border-t border-slate-100">
+                            <div class="text-sm font-bold text-slate-700">總金額: <span class="text-blue-600 text-lg">$${o.total}</span></div>
+                            <button onclick="toggleOrderStatus('${o.orderId}')" class="px-4 py-2 rounded-lg text-xs font-bold shadow transition ${isCompleted ? 'bg-slate-200 hover:bg-slate-300 text-slate-700' : 'bg-emerald-600 hover:bg-emerald-700 text-white'}">
+                                ${isCompleted ? '↩ 標記為未完成' : '✅ 標記為已完成'}
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        async function toggleOrderStatus(orderId) {
+            const order = orders.find(o => o.orderId === orderId);
+            if (!order) return;
+
+            order.status = (order.status === '已製作完成') ? '未製作完成' : '已製作完成';
+            renderOrdersGrid();
+            await syncToCloud();
+        }
+    </script>
+</body>
+</html>
