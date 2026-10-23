@@ -342,9 +342,9 @@
       <div style="text-align: center; color: var(--text-muted); padding: 20px;">載入中...</div>
     </div>
 
-    <!-- 家族成員共用檔案櫃（直接在介面上傳至免費伺服器） -->
+    <!-- 家族成員共用檔案櫃 -->
     <div class="section-header">
-      <h2 class="section-title">📂 家族免費雲端檔案庫 (.mov / .html / 圖片等)</h2>
+      <h2 class="section-title">📂 家族免費雲端檔案櫃 (.mov / .html / 圖片等)</h2>
       <button class="btn btn-primary" onclick="openUploadModal()">📤 上傳新檔案</button>
     </div>
 
@@ -386,7 +386,7 @@
     </div>
   </main>
 
-  <!-- 檔案上傳 Modal (所有成員皆可使用) -->
+  <!-- 檔案上傳 Modal -->
   <div class="modal-backdrop" id="uploadModal">
     <div class="modal">
       <div class="modal-header">
@@ -554,7 +554,7 @@
       `).join('');
     }
 
-    // 上傳檔案至免費伺服器 (Catbox.moe API)
+    // 上傳檔案至免費伺服器 (file.io 支援 CORS)
     async function handleFileUpload() {
       const fileInput = document.getElementById('fileInput');
       const fileDescInput = document.getElementById('fileDescInput');
@@ -568,20 +568,25 @@
       const file = fileInput.files[0];
       const fileName = fileDescInput.value.trim() || file.name;
 
-      uploadStatus.innerText = '正在上傳至免費伺服器，請稍候...';
+      uploadStatus.innerText = '正在上傳至免費雲端伺服器，請稍候...';
 
       try {
         const formData = new FormData();
-        formData.append('reqtype', 'fileupload');
-        formData.append('fileToUpload', file);
+        formData.append('file', file);
 
-        const response = await fetch('https://catbox.moe/user/api.php', {
+        const response = await fetch('https://file.io', {
           method: 'POST',
           body: formData
         });
 
         if (!response.ok) throw new Error('上傳失敗');
-        const fileUrl = (await response.text()).trim();
+        const data = await response.json();
+        
+        if (!data.success) {
+          throw new Error('伺服器未回傳成功連結');
+        }
+
+        const fileUrl = data.link;
 
         // 存入檔案清單
         siteData.files.unshift({
