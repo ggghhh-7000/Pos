@@ -342,9 +342,9 @@
       <div style="text-align: center; color: var(--text-muted); padding: 20px;">載入中...</div>
     </div>
 
-    <!-- 家族成員共用檔案櫃 -->
+    <!-- 家族共用檔案櫃（成員可在此直接上傳任意檔案至免伺服器空間） -->
     <div class="section-header">
-      <h2 class="section-title">📂 家族免費雲端檔案櫃 (.mov / .html / 圖片等)</h2>
+      <h2 class="section-title">📂 家族雲端檔案櫃 (.mov / .html / 圖片等)</h2>
       <button class="btn btn-primary" onclick="openUploadModal()">📤 上傳新檔案</button>
     </div>
 
@@ -355,13 +355,6 @@
     <!-- 快捷服務 -->
     <h2 class="section-title">🚀 快捷服務</h2>
     <div class="grid">
-      <a href="https://photos.google.com/" target="_blank" class="card">
-        <div>
-          <div class="card-icon">📸</div>
-          <div class="card-title">家族雲端相簿</div>
-          <div class="card-desc">高畫質紀錄與分享家族照片。</div>
-        </div>
-      </a>
       <a href="#" class="card">
         <div>
           <div class="card-icon">📅</div>
@@ -376,13 +369,6 @@
           <div class="card-desc">溫馨互動與近況交流專屬小天地。</div>
         </div>
       </a>
-      <a href="#" class="card">
-        <div>
-          <div class="card-icon">🔗</div>
-          <div class="card-title">常用外部連結</div>
-          <div class="card-desc">快速存取家族慣用網站。</div>
-        </div>
-      </a>
     </div>
   </main>
 
@@ -390,7 +376,7 @@
   <div class="modal-backdrop" id="uploadModal">
     <div class="modal">
       <div class="modal-header">
-        <div class="modal-title">📤 上傳檔案至免費雲端伺服器</div>
+        <div class="modal-title">📤 上傳檔案至雲端</div>
         <button class="close-btn" onclick="closeUploadModal()">&times;</button>
       </div>
       <div class="form-group">
@@ -426,7 +412,7 @@
     </div>
   </div>
 
-  <!-- 後台公告與檔案管理 Modal -->
+  <!-- 後台管理 Modal -->
   <div class="modal-backdrop" id="adminModal">
     <div class="modal">
       <div class="modal-header">
@@ -554,7 +540,6 @@
       `).join('');
     }
 
-    // 上傳檔案至免費伺服器 (file.io 支援 CORS)
     async function handleFileUpload() {
       const fileInput = document.getElementById('fileInput');
       const fileDescInput = document.getElementById('fileDescInput');
@@ -588,14 +573,12 @@
 
         const fileUrl = data.link;
 
-        // 存入檔案清單
         siteData.files.unshift({
           name: fileName,
           url: fileUrl,
           date: new Date().toISOString().split('T')[0]
         });
 
-        // 自動同步至雲端 jsonbin
         await saveToCloudSilent();
 
         uploadStatus.innerText = '上傳成功！已同步至雲端。';
@@ -620,7 +603,6 @@
     }
     function closeUploadModal() { uploadModal.style.display = 'none'; }
 
-    // 管理員登入控制
     openAdminBtn.addEventListener('click', () => {
       if (isAuthenticated) {
         openAdminPanel();
