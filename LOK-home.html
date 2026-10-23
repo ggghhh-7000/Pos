@@ -129,26 +129,28 @@
       background-color: #c53030;
     }
 
-    .notice-board {
+    .board-box {
       background: var(--card-bg);
       border-radius: var(--border-radius);
       padding: 24px;
       box-shadow: var(--shadow);
+      margin-bottom: 25px;
     }
 
-    .notice-item {
+    .item-row {
       display: flex;
       align-items: center;
       justify-content: space-between;
       padding: 14px 0;
       border-bottom: 1px solid #edf2f7;
+      gap: 15px;
     }
 
-    .notice-item:last-child {
+    .item-row:last-child {
       border-bottom: none;
     }
 
-    .notice-tag {
+    .tag {
       background: rgba(255, 126, 95, 0.12);
       color: var(--accent-color);
       padding: 4px 10px;
@@ -158,13 +160,12 @@
       white-space: nowrap;
     }
 
-    .notice-text {
+    .item-content {
       flex-grow: 1;
-      margin: 0 15px;
       font-size: 0.95rem;
     }
 
-    .notice-date {
+    .item-date {
       color: var(--text-muted);
       font-size: 0.85rem;
       white-space: nowrap;
@@ -174,6 +175,7 @@
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
       gap: 20px;
+      margin-top: 20px;
     }
 
     .card {
@@ -298,19 +300,6 @@
       font-family: inherit;
     }
 
-    .admin-notice-item {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 10px 0;
-      border-bottom: 1px solid #edf2f7;
-      gap: 10px;
-    }
-
-    .admin-notice-item .info {
-      flex-grow: 1;
-    }
-
     .status-error {
       color: #e53e3e;
       font-size: 0.85rem;
@@ -329,12 +318,7 @@
     @media (max-width: 600px) {
       header { padding: 40px 20px 60px; }
       .logo { font-size: 2rem; }
-      .notice-item {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 6px;
-      }
-      .notice-text { margin: 0; }
+      .item-row { flex-direction: column; align-items: flex-start; gap: 6px; }
     }
   </style>
 </head>
@@ -348,53 +332,83 @@
   </header>
 
   <main>
+    <!-- 最新公告區 -->
     <div class="section-header">
       <h2 class="section-title">📌 最新公告</h2>
       <button class="btn btn-outline" id="openAdminBtn">⚙️ 後台管理</button>
     </div>
     
-    <div class="notice-board" id="noticeContainer">
-      <div style="text-align: center; color: var(--text-muted); padding: 20px;">
-        載入中，請稍候...
-      </div>
+    <div class="board-box" id="noticeContainer">
+      <div style="text-align: center; color: var(--text-muted); padding: 20px;">載入中...</div>
     </div>
 
-    <h2 class="section-title">🚀 家族快捷服務</h2>
+    <!-- 家族成員共用檔案櫃（直接在介面上傳至免費伺服器） -->
+    <div class="section-header">
+      <h2 class="section-title">📂 家族免費雲端檔案庫 (.mov / .html / 圖片等)</h2>
+      <button class="btn btn-primary" onclick="openUploadModal()">📤 上傳新檔案</button>
+    </div>
+
+    <div class="board-box" id="fileContainer">
+      <div style="text-align: center; color: var(--text-muted); padding: 20px;">載入檔案櫃中...</div>
+    </div>
+
+    <!-- 快捷服務 -->
+    <h2 class="section-title">🚀 快捷服務</h2>
     <div class="grid">
-      <a href="#" class="card">
+      <a href="https://photos.google.com/" target="_blank" class="card">
         <div>
           <div class="card-icon">📸</div>
-          <div class="card-title">家族相簿</div>
-          <div class="card-desc">記錄與分享每一個美好時光，典藏共同的溫馨回憶。</div>
+          <div class="card-title">家族雲端相簿</div>
+          <div class="card-desc">高畫質紀錄與分享家族照片。</div>
         </div>
       </a>
-
       <a href="#" class="card">
         <div>
           <div class="card-icon">📅</div>
           <div class="card-title">活動行事曆</div>
-          <div class="card-desc">查看生日、聚會及家族重要紀念日，不再錯過任何時刻。</div>
+          <div class="card-desc">查看生日、聚會及重要紀念日。</div>
         </div>
       </a>
-
       <a href="#" class="card">
         <div>
           <div class="card-icon">💬</div>
           <div class="card-title">家族留言板</div>
-          <div class="card-desc">溫馨互動與近況交流的專屬小天地。</div>
+          <div class="card-desc">溫馨互動與近況交流專屬小天地。</div>
         </div>
       </a>
-
       <a href="#" class="card">
         <div>
-          <div class="card-icon">📁</div>
-          <div class="card-title">共享雲端</div>
-          <div class="card-desc">重要文件、旅遊攻略與家族資料安全的存放區。</div>
+          <div class="card-icon">🔗</div>
+          <div class="card-title">常用外部連結</div>
+          <div class="card-desc">快速存取家族慣用網站。</div>
         </div>
       </a>
     </div>
   </main>
 
+  <!-- 檔案上傳 Modal (所有成員皆可使用) -->
+  <div class="modal-backdrop" id="uploadModal">
+    <div class="modal">
+      <div class="modal-header">
+        <div class="modal-title">📤 上傳檔案至免費雲端伺服器</div>
+        <button class="close-btn" onclick="closeUploadModal()">&times;</button>
+      </div>
+      <div class="form-group">
+        <label>選擇檔案 (.mov, .html, .jpg, .pdf 等)：</label>
+        <input type="file" id="fileInput">
+      </div>
+      <div class="form-group">
+        <label>檔案說明 / 名稱：</label>
+        <input type="text" id="fileDescInput" placeholder="例如：中秋節聚會影片.mov">
+      </div>
+      <div id="uploadStatus" style="font-size: 0.9rem; color: var(--primary-color); margin-bottom: 10px;"></div>
+      <div style="text-align: right;">
+        <button class="btn btn-primary" id="startUploadBtn" onclick="handleFileUpload()">確認上傳並發布</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 管理員登入 Modal -->
   <div class="modal-backdrop" id="loginModal">
     <div class="modal" style="max-width: 400px;">
       <div class="modal-header">
@@ -412,11 +426,21 @@
     </div>
   </div>
 
+  <!-- 後台公告與檔案管理 Modal -->
   <div class="modal-backdrop" id="adminModal">
     <div class="modal">
       <div class="modal-header">
-        <div class="modal-title">⚙️ 後台公告管理</div>
+        <div class="modal-title">⚙️ 後台管理中心</div>
         <button class="close-btn" onclick="closeAdminModal()">&times;</button>
+      </div>
+
+      <div style="margin-bottom: 20px; display: flex; gap: 10px; flex-wrap: wrap; background: #edf2f7; padding: 12px; border-radius: 8px; align-items: center;">
+        <span style="font-size: 0.9rem; font-weight: bold; color: var(--primary-color);">📦 資料備份：</span>
+        <button class="btn btn-outline" id="exportBackupBtn" style="background: white; font-size: 0.85rem;">💾 下載備份 (.json)</button>
+        <label class="btn btn-outline" style="background: white; font-size: 0.85rem; cursor: pointer; margin-bottom: 0;">
+          📂 匯入還原
+          <input type="file" id="importBackupFile" accept=".json" style="display: none;">
+        </label>
       </div>
 
       <div style="margin-bottom: 20px; border: 1px solid #e2e8f0; padding: 16px; border-radius: 8px; background: #fafafa;">
@@ -434,17 +458,18 @@
           <label>公告內容：</label>
           <textarea id="newNoticeText" rows="3" placeholder="請輸入公告內容..."></textarea>
         </div>
-        <button class="btn btn-primary" id="addNoticeBtn">新增至清單</button>
+        <button class="btn btn-primary" id="addNoticeBtn">新增公告</button>
       </div>
 
       <div>
-        <h3 style="font-size: 1rem; margin-bottom: 10px; color: var(--primary-color);">📋 目前公告列表</h3>
+        <h3 style="font-size: 1rem; margin-bottom: 10px; color: var(--primary-color);">📋 目前公告與檔案管理</h3>
         <div id="adminNoticeList"></div>
+        <div id="adminFileList" style="margin-top: 15px;"></div>
       </div>
 
       <div style="margin-top: 24px; display: flex; justify-content: space-between; align-items: center;">
         <button class="btn btn-outline" onclick="closeAdminModal()">關閉</button>
-        <button class="btn btn-primary" id="syncToCloudBtn" style="background-color: #38a169;">☁️ 儲存並同步至雲端</button>
+        <button class="btn btn-primary" id="syncToCloudBtn" style="background-color: #38a169;">☁️ 儲存並同步至雲端伺服器</button>
       </div>
     </div>
   </div>
@@ -458,65 +483,139 @@
     const JSONBIN_MASTER_KEY = '$2a$10$Q3e6T7l53HKgJr3pc5tuW.5dTGTAyi6948TrSpoe7mNIZm6kaRMbm';
     const ADMIN_PASSWORD = 'LeLe-LOK';
 
-    let currentNotices = [];
+    let siteData = { notices: [], files: [] };
     let isAuthenticated = false;
 
     const noticeContainer = document.getElementById('noticeContainer');
+    const fileContainer = document.getElementById('fileContainer');
     const openAdminBtn = document.getElementById('openAdminBtn');
     const loginModal = document.getElementById('loginModal');
     const adminModal = document.getElementById('adminModal');
+    const uploadModal = document.getElementById('uploadModal');
     const adminPasswordInput = document.getElementById('adminPasswordInput');
     const loginSubmitBtn = document.getElementById('loginSubmitBtn');
     const loginErrorMsg = document.getElementById('loginErrorMsg');
     const addNoticeBtn = document.getElementById('addNoticeBtn');
     const syncToCloudBtn = document.getElementById('syncToCloudBtn');
+    const exportBackupBtn = document.getElementById('exportBackupBtn');
+    const importBackupFile = document.getElementById('importBackupFile');
 
     window.addEventListener('DOMContentLoaded', () => {
-      fetchNoticesFromCloud();
+      fetchDataFromCloud();
     });
 
-    async function fetchNoticesFromCloud() {
-      noticeContainer.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 20px;">正在讀取最新公告...</div>';
+    async function fetchDataFromCloud() {
       try {
         const response = await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}/latest`, {
           method: 'GET',
-          headers: {
-            'X-Master-Key': JSONBIN_MASTER_KEY
-          }
+          headers: { 'X-Master-Key': JSONBIN_MASTER_KEY }
         });
-
-        if (!response.ok) throw new Error('讀取失敗，請確認連線。');
-
+        if (!response.ok) throw new Error('讀取失敗');
         const data = await response.json();
-        if (data.record && Array.isArray(data.record.notices)) {
-          currentNotices = data.record.notices;
-        } else if (Array.isArray(data.record)) {
-          currentNotices = data.record;
-        } else {
-          currentNotices = [];
+        
+        if (data.record) {
+          siteData.notices = Array.isArray(data.record.notices) ? data.record.notices : [];
+          siteData.files = Array.isArray(data.record.files) ? data.record.files : [];
         }
-
         renderNotices();
+        renderFiles();
       } catch (err) {
-        noticeContainer.innerHTML = `<div style="text-align: center; color: #e53e3e; padding: 20px;">無法讀取公告：${err.message}</div>`;
+        noticeContainer.innerHTML = `<div style="text-align: center; color: #e53e3e; padding: 20px;">無法讀取資料：${err.message}</div>`;
+        fileContainer.innerHTML = `<div style="text-align: center; color: #e53e3e; padding: 20px;">無法讀取檔案櫃</div>`;
       }
     }
 
     function renderNotices() {
-      if (currentNotices.length === 0) {
-        noticeContainer.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 20px;">目前尚無公告。</div>';
+      if (siteData.notices.length === 0) {
+        noticeContainer.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 10px;">目前尚無公告。</div>';
         return;
       }
-
-      noticeContainer.innerHTML = currentNotices.map(item => `
-        <div class="notice-item">
-          <span class="notice-tag">${escapeHtml(item.tag || '公告')}</span>
-          <span class="notice-text">${escapeHtml(item.text)}</span>
-          <span class="notice-date">${escapeHtml(item.date)}</span>
+      noticeContainer.innerHTML = siteData.notices.map(item => `
+        <div class="item-row">
+          <span class="tag">${escapeHtml(item.tag || '公告')}</span>
+          <span class="item-content">${escapeHtml(item.text)}</span>
+          <span class="item-date">${escapeHtml(item.date)}</span>
         </div>
       `).join('');
     }
 
+    function renderFiles() {
+      if (siteData.files.length === 0) {
+        fileContainer.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 10px;">目前尚無上傳檔案，點擊上方按鈕上傳。</div>';
+        return;
+      }
+      fileContainer.innerHTML = siteData.files.map(item => `
+        <div class="item-row">
+          <span class="tag" style="background: rgba(43, 88, 118, 0.12); color: var(--primary-color);">檔案</span>
+          <span class="item-content"><strong>${escapeHtml(item.name)}</strong></span>
+          <span class="item-date">${escapeHtml(item.date)}</span>
+          <a href="${escapeHtml(item.url)}" target="_blank" class="btn btn-outline" style="padding: 4px 10px; font-size: 0.85rem;">下載 / 檢視</a>
+        </div>
+      `).join('');
+    }
+
+    // 上傳檔案至免費伺服器 (Catbox.moe API)
+    async function handleFileUpload() {
+      const fileInput = document.getElementById('fileInput');
+      const fileDescInput = document.getElementById('fileDescInput');
+      const uploadStatus = document.getElementById('uploadStatus');
+
+      if (fileInput.files.length === 0) {
+        alert('請先選擇要上傳的檔案！');
+        return;
+      }
+
+      const file = fileInput.files[0];
+      const fileName = fileDescInput.value.trim() || file.name;
+
+      uploadStatus.innerText = '正在上傳至免費伺服器，請稍候...';
+
+      try {
+        const formData = new FormData();
+        formData.append('reqtype', 'fileupload');
+        formData.append('fileToUpload', file);
+
+        const response = await fetch('https://catbox.moe/user/api.php', {
+          method: 'POST',
+          body: formData
+        });
+
+        if (!response.ok) throw new Error('上傳失敗');
+        const fileUrl = (await response.text()).trim();
+
+        // 存入檔案清單
+        siteData.files.unshift({
+          name: fileName,
+          url: fileUrl,
+          date: new Date().toISOString().split('T')[0]
+        });
+
+        // 自動同步至雲端 jsonbin
+        await saveToCloudSilent();
+
+        uploadStatus.innerText = '上傳成功！已同步至雲端。';
+        setTimeout(() => {
+          closeUploadModal();
+          renderFiles();
+          fileInput.value = '';
+          fileDescInput.value = '';
+          uploadStatus.innerText = '';
+        }, 1200);
+
+      } catch (err) {
+        uploadStatus.innerText = `上傳出錯: ${err.message}`;
+      }
+    }
+
+    function openUploadModal() {
+      document.getElementById('fileInput').value = '';
+      document.getElementById('fileDescInput').value = '';
+      document.getElementById('uploadStatus').innerText = '';
+      uploadModal.style.display = 'flex';
+    }
+    function closeUploadModal() { uploadModal.style.display = 'none'; }
+
+    // 管理員登入控制
     openAdminBtn.addEventListener('click', () => {
       if (isAuthenticated) {
         openAdminPanel();
@@ -529,114 +628,127 @@
     });
 
     loginSubmitBtn.addEventListener('click', handleLogin);
-    adminPasswordInput.addEventListener('keypress', (e) => {
-      if (e.key === 'Enter') handleLogin();
-    });
+    adminPasswordInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') handleLogin(); });
 
     function handleLogin() {
-      const inputPass = adminPasswordInput.value;
-      if (inputPass === ADMIN_PASSWORD) {
+      if (adminPasswordInput.value === ADMIN_PASSWORD) {
         isAuthenticated = true;
         closeLoginModal();
         openAdminPanel();
       } else {
-        loginErrorMsg.innerText = '登入碼錯誤！請重新輸入。';
+        loginErrorMsg.innerText = '登入碼錯誤！';
       }
     }
-
-    function closeLoginModal() {
-      loginModal.style.display = 'none';
-    }
-
+    function closeLoginModal() { loginModal.style.display = 'none'; }
     function openAdminPanel() {
-      renderAdminNoticeList();
+      renderAdminLists();
       adminModal.style.display = 'flex';
     }
+    function closeAdminModal() { adminModal.style.display = 'none'; }
 
-    function closeAdminModal() {
-      adminModal.style.display = 'none';
-    }
-
-    function renderAdminNoticeList() {
+    function renderAdminLists() {
       const adminNoticeList = document.getElementById('adminNoticeList');
-      if (currentNotices.length === 0) {
-        adminNoticeList.innerHTML = '<div style="color: var(--text-muted); font-size: 0.9rem; text-align: center; padding: 10px;">目前沒有任何公告</div>';
-        return;
-      }
+      const adminFileList = document.getElementById('adminFileList');
 
-      adminNoticeList.innerHTML = currentNotices.map((item, index) => `
-        <div class="admin-notice-item">
-          <div class="info">
-            <span class="notice-tag" style="margin-right: 6px;">${escapeHtml(item.tag)}</span>
-            <span style="font-size: 0.9rem;">${escapeHtml(item.text)}</span>
-            <div style="font-size: 0.75rem; color: var(--text-muted);">${escapeHtml(item.date)}</div>
+      adminNoticeList.innerHTML = siteData.notices.length === 0 ? '<div style="color:var(--text-muted); font-size:0.9rem;">無公告</div>' :
+        siteData.notices.map((item, idx) => `
+          <div class="item-row" style="padding: 8px 0;">
+            <span>[${escapeHtml(item.tag)}] ${escapeHtml(item.text)}</span>
+            <button class="btn btn-danger" onclick="deleteNotice(${idx})" style="padding: 2px 6px; font-size: 0.75rem;">刪除</button>
           </div>
-          <button class="btn btn-danger" onclick="deleteNotice(${index})" style="padding: 4px 8px; font-size: 0.8rem;">刪除</button>
-        </div>
-      `).join('');
+        `).join('');
+
+      adminFileList.innerHTML = siteData.files.length === 0 ? '<div style="color:var(--text-muted); font-size:0.9rem;">無檔案</div>' :
+        '<h4 style="font-size:0.95rem; margin-top:10px; color:var(--primary-color);">檔案管理：</h4>' +
+        siteData.files.map((item, idx) => `
+          <div class="item-row" style="padding: 8px 0;">
+            <span>${escapeHtml(item.name)}</span>
+            <button class="btn btn-danger" onclick="deleteFile(${idx})" style="padding: 2px 6px; font-size: 0.75rem;">刪除</button>
+          </div>
+        `).join('');
     }
+
+    window.deleteNotice = function(idx) {
+      siteData.notices.splice(idx, 1);
+      renderAdminLists();
+      renderNotices();
+    };
+
+    window.deleteFile = function(idx) {
+      siteData.files.splice(idx, 1);
+      renderAdminLists();
+      renderFiles();
+    };
 
     addNoticeBtn.addEventListener('click', () => {
       const tag = document.getElementById('newNoticeTag').value;
       const text = document.getElementById('newNoticeText').value.trim();
-
-      if (!text) {
-        alert('請輸入公告內容');
-        return;
-      }
-
-      const newNotice = {
-        id: Date.now().toString(),
-        tag: tag,
-        text: text,
-        date: new Date().toISOString().split('T')[0]
-      };
-
-      currentNotices.unshift(newNotice);
+      if (!text) { alert('請輸入內容'); return; }
+      siteData.notices.unshift({ id: Date.now().toString(), tag, text, date: new Date().toISOString().split('T')[0] });
       document.getElementById('newNoticeText').value = '';
-      renderAdminNoticeList();
+      renderAdminLists();
       renderNotices();
     });
 
-    window.deleteNotice = function(index) {
-      currentNotices.splice(index, 1);
-      renderAdminNoticeList();
-      renderNotices();
-    };
+    async function saveToCloudSilent() {
+      await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'X-Master-Key': JSONBIN_MASTER_KEY },
+        body: JSON.stringify(siteData)
+      });
+    }
 
     syncToCloudBtn.addEventListener('click', async () => {
       syncToCloudBtn.innerText = '同步中...';
       syncToCloudBtn.disabled = true;
-
       try {
-        const response = await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-Master-Key': JSONBIN_MASTER_KEY
-          },
-          body: JSON.stringify({ notices: currentNotices })
-        });
-
-        if (!response.ok) throw new Error('同步失敗，請確認權限。');
-
-        alert('成功更新並同步至 jsonbin！');
+        await saveToCloudSilent();
+        alert('成功同步至雲端伺服器！');
         closeAdminModal();
       } catch (err) {
-        alert(`同步出錯: ${err.message}`);
+        alert('同步失敗: ' + err.message);
       } finally {
-        syncToCloudBtn.innerText = '☁️ 儲存並同步至雲端';
+        syncToCloudBtn.innerText = '☁️ 儲存並同步至雲端伺服器';
         syncToCloudBtn.disabled = false;
       }
     });
 
+    exportBackupBtn.addEventListener('click', () => {
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(siteData, null, 2));
+      const a = document.createElement('a');
+      a.href = dataStr;
+      a.download = `lok_family_full_backup_${new Date().toISOString().split('T')[0]}.json`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+    });
+
+    importBackupFile.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(event) {
+        try {
+          const parsed = JSON.parse(event.target.result);
+          if (parsed.notices || parsed.files) {
+            siteData.notices = parsed.notices || [];
+            siteData.files = parsed.files || [];
+            renderAdminLists();
+            renderNotices();
+            renderFiles();
+            alert('還原成功！請點擊右下角同步至雲端。');
+          } else {
+            alert('格式不符');
+          }
+        } catch (err) { alert('解析錯誤: ' + err.message); }
+        importBackupFile.value = '';
+      };
+      reader.readAsText(file);
+    });
+
     function escapeHtml(str) {
       if (!str) return '';
-      return str.replace(/&/g, "&amp;")
-                .replace(/</g, "&lt;")
-                .replace(/>/g, "&gt;")
-                .replace(/"/g, "&quot;")
-                .replace(/'/g, "&#039;");
+      return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
     }
   </script>
 </body>
