@@ -10,7 +10,7 @@
     <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
     <script type="text/javascript">
         (function() {
-            emailjs.init("YOUR_EMAILJS_USER_ID"); // 可填入您的 EmailJS Public Key
+            emailjs.init("3aV5Vn_fuiVo310R1"); // 已填入您的 Public Key
         })();
     </script>
     <style>
@@ -28,7 +28,7 @@
     <!-- 頂部導覽列 -->
     <header class="bg-slate-900 text-white px-4 py-3 flex justify-between items-center shadow-md">
         <div class="flex items-center space-x-3">
-            <h1 class="text-lg font-bold tracking-wide">LOK-什麼都有店 (前台點餐)</h1>
+            <h1 class="text-lg font-bold tracking-wide">🍧 LOK-什麼都有店 (前台點餐)</h1>
             <span id="sync-status" class="text-xs bg-slate-800 text-slate-300 px-2.5 py-1 rounded border border-slate-700">同步中...</span>
         </div>
         <div class="flex items-center space-x-3 text-xs text-slate-300">
@@ -45,7 +45,6 @@
         
         <!-- 左側：商品目錄與分類 -->
         <section class="flex-1 flex flex-col bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-            <!-- 桌面與用餐資訊列 -->
             <div class="p-3 bg-slate-50 border-b border-slate-200 flex flex-wrap gap-2 items-center justify-between text-xs">
                 <div class="flex items-center gap-2">
                     <span class="font-bold text-slate-700">用餐類型:</span>
@@ -58,11 +57,18 @@
                 </div>
                 <div class="flex gap-1 overflow-x-auto no-scrollbar py-1" id="category-tabs">
                     <button onclick="filterCategory('all')" class="cat-btn px-3 py-1 bg-blue-600 text-white rounded-lg font-bold text-xs whitespace-nowrap">全部品項</button>
-                    
+                    <button onclick="filterCategory('嵐山飄雪')" class="cat-btn px-3 py-1 bg-slate-100 text-slate-700 rounded-lg font-bold text-xs whitespace-nowrap hover:bg-slate-200">❄️ 嵐山飄雪</button>
+                    <button onclick="filterCategory('水果田')" class="cat-btn px-3 py-1 bg-slate-100 text-slate-700 rounded-lg font-bold text-xs whitespace-nowrap hover:bg-slate-200">🍓 水果田</button>
+                    <button onclick="filterCategory('經典町')" class="cat-btn px-3 py-1 bg-slate-100 text-slate-700 rounded-lg font-bold text-xs whitespace-nowrap hover:bg-slate-200">🍵 經典町</button>
+                    <button onclick="filterCategory('雪見豆花')" class="cat-btn px-3 py-1 bg-slate-100 text-slate-700 rounded-lg font-bold text-xs whitespace-nowrap hover:bg-slate-200">🍮 雪見豆花</button>
+                    <button onclick="filterCategory('自選冰料')" class="cat-btn px-3 py-1 bg-slate-100 text-slate-700 rounded-lg font-bold text-xs whitespace-nowrap hover:bg-slate-200">🍧 自選冰料</button>
+                    <button onclick="filterCategory('牛肉麵')" class="cat-btn px-3 py-1 bg-slate-100 text-slate-700 rounded-lg font-bold text-xs whitespace-nowrap hover:bg-slate-200">🍜 牛肉麵</button>
+                    <button onclick="filterCategory('厚片吐司')" class="cat-btn px-3 py-1 bg-slate-100 text-slate-700 rounded-lg font-bold text-xs whitespace-nowrap hover:bg-slate-200">🍞 厚片吐司</button>
+                    <button onclick="filterCategory('爆料嫩仙草')" class="cat-btn px-3 py-1 bg-slate-100 text-slate-700 rounded-lg font-bold text-xs whitespace-nowrap hover:bg-slate-200">🌿 爆料嫩仙草</button>
+                    <button onclick="filterCategory('黑蜜刨冰')" class="cat-btn px-3 py-1 bg-slate-100 text-slate-700 rounded-lg font-bold text-xs whitespace-nowrap hover:bg-slate-200">🧊 黑蜜刨冰</button>
                 </div>
             </div>
 
-            <!-- 搜尋與品項列表 -->
             <div class="p-3 border-b border-slate-200 bg-white">
                 <input type="text" id="search-input" placeholder="🔍 搜尋商品名稱或編號 (如 A1、牛肉麵)..." oninput="handleSearch()"
                     class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
@@ -77,18 +83,15 @@
                 <button onclick="clearCart()" class="text-xs text-red-500 hover:underline">清空</button>
             </div>
 
-            <!-- 購物車列表 -->
             <div id="cart-list" class="flex-1 overflow-y-auto p-3 divide-y divide-slate-100">
                 <p class="text-slate-400 text-center py-10 text-sm">購物車是空的</p>
             </div>
 
-            <!-- 整張訂單備註 -->
             <div class="p-3 bg-slate-50 border-t border-slate-200">
-                <label class="block text-xs font-bold text-slate-600 mb-1">📝 訂單備註 </label>
+                <label class="block text-xs font-bold text-slate-600 mb-1">📝 訂單備註 (例如：少冰、不要香菜)</label>
                 <input type="text" id="order-note" placeholder="請輸入整單備註..." class="w-full border border-slate-300 rounded px-2.5 py-1.5 text-xs bg-white">
             </div>
 
-            <!-- 結帳金額與按鈕 -->
             <div class="p-4 border-t border-slate-200 bg-slate-50 rounded-b-xl flex flex-col gap-2">
                 <div class="flex justify-between items-center text-slate-500 text-xs">
                     <span>總數量：</span>
@@ -129,7 +132,7 @@
 
                 <div>
                     <label class="block text-xs font-semibold text-slate-600 mb-1">📧 寄送帳單至顧客 Email (選填)</label>
-                    <input type="email" id="customer-email" placeholder="customer@example.com" 
+                    <input type="email" id="customer-email" placeholder="ggghhh157@outlook.com" 
                         class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none font-mono">
                 </div>
             </div>
@@ -154,14 +157,13 @@
         </div>
     </div>
 
-    <!-- JavaScript 邏輯 -->
+    <!-- JavaScript 業務邏輯 -->
     <script>
         const CONFIG = {
             apiKey: "$2a$10$Q3e6T7l53HKgJr3pc5tuW.5dTGTAyi6948TrSpoe7mNIZm6kaRMbm",
             binId: "6ada3777ac6210605a49804e"
         };
 
-        // 預設精選品項（對應範本）
         let products = [
             { id: "A1", sku: "A1", name: "嵐山賞櫻 (草莓風味)", price: 120, stock: 50, category: "嵐山飄雪" },
             { id: "A2", sku: "A2", name: "嵐山竹影 (抹茶風味)", price: 120, stock: 50, category: "嵐山飄雪" },
@@ -182,7 +184,6 @@
         let cart = [];
         let currentCategory = 'all';
         let currentPaymentMethod = '現金';
-        let shiftTotalSales = 0;
 
         let mediaRecorder, recordedChunks = [], mediaStream;
 
@@ -384,7 +385,6 @@
             const orderNote = document.getElementById('order-note').value.trim();
             const customerEmail = document.getElementById('customer-email').value.trim();
 
-            // 扣除庫存
             for (let item of cart) {
                 let p = products.find(prod => (prod.id === item.id || prod.sku === item.id));
                 if (p) p.stock -= item.quantity;
@@ -411,7 +411,6 @@
                     body: JSON.stringify({ products, orders })
                 });
 
-                // 若有填寫 Email，透過 EmailJS 寄送
                 if (customerEmail) {
                     const itemsText = newOrder.items.map(i => `${i.name} x${i.quantity} (備註: ${i.note || '無'})`).join('\n');
                     emailjs.send("default_service", "template_id", {
@@ -421,7 +420,7 @@
                         order_details: itemsText,
                         order_total: newOrder.total,
                         order_note: newOrder.note
-                    }).catch(err => console.log('Email 寄送略過或設定中'));
+                    }).catch(err => console.log('Email 寄送略過'));
                 }
 
                 alert(`✅ 結帳成功！訂單 ${newOrder.orderId} 已送至廚房。`);
