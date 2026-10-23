@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EdgePOS Pro 前台點餐收銀系統</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        @media print {
+            body * { visibility: hidden; }
+            #receipt-print-area, #receipt-print-area * { visibility: visible; }
+            #receipt-print-area { position: absolute; left: 0; top: 0; width: 100%; }
+        }
+    </style>
+</head>
+<body class="bg-slate-100 h-screen flex flex-col font-sans overflow-hidden">
+
+    <!-- 頂部導覽列 -->
+    <header class="bg-slate-900 text-white px-4 py-3 flex justify-between items-center shadow-md">
+        <div class="flex items-center space-x-3">
+            <h1 class="text-lg font-bold tracking-wide">🛒 EdgePOS 前台點餐</h1>
+            <span id="sync-status" class="text-xs bg-slate-800 text-slate-300 px-2.5 py-1 rounded border border-slate-700">同步中...</span>
+        </div>
+        <div class="flex items-center space-x-4 text-xs text-slate-300">
+            <span>收銀員: <strong class="text-white font-mono">2226 (LOK)</strong></span>
+            <span>當班營業額: <strong class="text-emerald-400 font-mono">$<span id="shift-sales">0</span></strong></span>
+            <button onclick="fetchDataFromCloud()" class="bg-slate-800 hover:bg-slate-700 px-2.5 py-1 rounded border border-slate-700 transition">🔄 同步商品</button>
+        </div>
+    </header>
+
+    <!-- 主內容區 -->
+    <main class="flex-1 flex overflow-hidden p-3 gap-3">
+        
+        <!-- 左側：商品目錄與搜尋 -->
+        <section class="flex-1 flex flex-col bg-white rounded-xl shadow-sm border border-slate-200">
+            <!-- 搜尋列 -->
+            <div class="p-3 border-b border-slate-200 flex gap-2 bg-slate-50 rounded-t-xl">
+                <input type="text" id="barcode-input" placeholder="掃描條碼 SKU 或輸入商品名稱搜尋 (按 Enter 快速加入)..." 
+                    class="flex-1 border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                    onkeypress="handleBarcodeEnter(event)">
+                <button type="button" onclick="searchProduct()" class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg text-sm font-semibold transition cursor-pointer shadow">
+                    搜尋
+                </button>
+            </div>
+
+            <!-- 商品卡片列表 -->
+            <div id="product-grid" class="flex-1 p-3 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 overflow-y-auto">
+                <!-- 動態載入商品 -->
+            </div>
+        </section>
+
+        <!-- 右側：購物車與結帳 -->
+        <section class="w-96 bg-white rounded-xl shadow-sm border border-slate-200 flex flex-col">
+            <div class="p-3 border-b border-slate-200 flex justify-between items-center bg-slate-50 rounded-t-xl">
+                <h2 class="font-bold text-slate-700 text-sm">📋 當前點餐明細 (Cart)</h2>
+                <button onclick="clearCart()" class="text-xs text-red-500 hover:underline">清空購物車</button>
+            </div>
+
+            <!-- 購物車列表 -->
+            <div id="cart-list" class="flex-1 overflow-y-auto p-3 divide-y divide-slate-100">
+                <p class="text-slate-400 text-center py-10 text-sm">購物車是空的</p>
+            </div>
+
+            <!-- 結帳金額與按鈕 -->
+            <div class="p-4 border-t border-slate-200 bg-slate-50 rounded-b-xl flex flex-col gap-2">
+                <div class="flex justify-between items-center text-slate-500 text-xs">
+                    <span>項目 / 數量：</span>
+                    <span id="cart-count" class="font-semibold text-slate-700">0 項 (0 件)</span>
+                </div>
+                <div class="flex justify-between items-center text-slate-500 text-xs">
+                    <span>營業稅 (5%含稅)：</span>
+                    <span id="cart-tax" class="font-semibold text-slate-700">$0</span>
+                </div>
+                <div class="flex justify-between items-baseline pt-2 border-t border-slate-200">
+                    <span class="text-slate-700 font-bold">總計金額：</span>
+                    <span class="text-2xl font-extrabold text-blue-600">$<span id="cart-total">0</span></span>
+                </div>
+                <button onclick="openCheckoutModal()" id="checkout-btn" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-3 rounded-xl font-bold text-base shadow-md transition disabled:opacity-50 disabled:cursor-not-allowed mt-2">
+                    💳 確認結帳送出 (Checkout)
+                </button>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- ================= 擬真結帳與付款 Modal ================= -->
+    <div id="checkout-modal" class="fixed inset-0 bg-black/60 hidden flex items-center justify-center p-4 backdrop-blur-sm z-50">
+        <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200">
+            <h3 class="text-lg font-bold mb-1 text-slate-800">💰 收銀台結帳作業</h3>
+            <p class="text-xs text-slate-500 mb-4">請確認付款方式與發票類型以完成點餐</p>
+            
+            <div class="space-y-3">
+                <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 flex justify-between items-center">
+                    <span class="text-sm font-medium text-slate-600">應付總額：</span>
+                    <span class="text-xl font-extrabold text-blue-600">$<span id="modal-total-display">0</span></span>
+                </div>
+
+                <!-- 付款方式 -->
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">付款方式</label>
+                    <div class="grid grid-cols-3 gap-2">
+                        <button type="button" onclick="setPaymentMethod('cash')" id="pay-cash-btn" class="py-2 border-2 border-blue-600 bg-blue-50 text-blue-700 text-xs font-bold rounded-lg transition">💵 現金</button>
+                        <button type="button" onclick="setPaymentMethod('card')" id="pay-card-btn" class="py-2 border-2 border-slate-200 text-slate-600 text-xs font-bold rounded-lg transition">💳 信用卡</button>
+                        <button type="button" onclick="setPaymentMethod('mobile')" id="pay-mobile-btn" class="py-2 border-2 border-slate-200 text-slate-600 text-xs font-bold rounded-lg transition">📱 行動支付</button>
+                    </div>
+                </div>
+
+                <!-- 現金找零計算區 -->
+                <div id="cash-section" class="space-y-2">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">顧客付現金額 ($)</label>
+                        <input type="number" id="cash-tendered" placeholder="輸入收現金額" oninput="calculateChange()"
+                            class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                    </div>
+                    <div class="flex gap-1">
+                        <button type="button" onclick="quickCash(0)" class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs py-1.5 rounded font-bold border">剛好</button>
+                        <button type="button" onclick="quickCash(100)" class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs py-1.5 rounded font-bold border">100</button>
+                        <button type="button" onclick="quickCash(500)" class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs py-1.5 rounded font-bold border">500</button>
+                        <button type="button" onclick="quickCash(1000)" class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs py-1.5 rounded font-bold border">1000</button>
+                        <button type="button" onclick="quickCash(2000)" class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs py-1.5 rounded font-bold border">2000</button>
+                    </div>
+                    <div class="flex justify-between items-center bg-emerald-50 p-2.5 rounded-xl border border-emerald-200">
+                        <span class="text-xs font-bold text-emerald-800">應找零金額：</span>
+                        <span class="text-lg font-extrabold text-emerald-600">$<span id="change-display">0</span></span>
+                    </div>
+                </div>
+
+                <!-- 發票類型選擇 -->
+                <div class="grid grid-cols-2 gap-2 pt-1">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">發票類型</label>
+                        <select id="invoice-type" onchange="toggleInvoiceField()" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-xs bg-white">
+                            <option value="2">二聯式電子發票</option>
+                            <option value="3">三聯式（打統編）</option>
+                        </select>
+                    </div>
+                    <div id="tax-id-field" style="display:none;">
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">公司統一編號</label>
+                        <input type="text" id="invoice-tax-id" placeholder="8碼統編" maxlength="8" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-xs font-mono">
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-5 flex justify-end space-x-2">
+                <button onclick="closeCheckoutModal()" class="px-4 py-2 text-slate-600 text-sm hover:bg-slate-100 rounded-xl transition">取消</button>
+                <button onclick="processCheckout()" class="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold rounded-xl shadow-md transition">確認送出訂單</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= 擬真電子收據小票 Modal ================= -->
+    <div id="receipt-modal" class="fixed inset-0 bg-black/60 hidden flex items-center justify-center p-4 backdrop-blur-sm z-50">
+        <div class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl border border-slate-200 flex flex-col items-center">
+            
+            <div id="receipt-print-area" class="w-full bg-amber-50/50 p-4 rounded-xl border border-dashed border-slate-300 font-mono text-xs text-slate-700 space-y-3">
+                <div class="text-center space-y-1">
+                    <h4 class="font-bold text-sm text-slate-900">🧾 EDGE POS 點餐收據</h4>
+                    <p class="text-[10px] text-slate-500">統編: 88822260 | 高雄旗艦店 (櫃台 01)</p>
+                    <p class="text-[10px] text-slate-400" id="receipt-time">2026-10-23 00:00:00</p>
+                    <p class="text-[10px] font-bold text-blue-600" id="receipt-inv-type">二聯式電子發票</p>
+                </div>
+                <div class="border-t border-b border-dashed border-slate-300 py-2 space-y-1">
+                    <div class="flex justify-between font-bold text-[11px] text-slate-500 pb-1">
+                        <span>品名</span>
+                        <span>數量 / 小計</span>
+                    </div>
+                    <div id="receipt-items-list" class="space-y-1"></div>
+                </div>
+                <div class="space-y-1 pt-1 text-right">
+                    <div class="flex justify-between"><span>總計 (Total):</span> <span id="rec-total" class="font-bold">$0</span></div>
+                    <div class="flex justify-between"><span>付款方式:</span> <span id="rec-method">現金</span></div>
+                    <div class="flex justify-between"><span>實收金額:</span> <span id="rec-tendered">$0</span></div>
+                    <div class="flex justify-between text-emerald-600 font-bold"><span>找零 (Change):</span> <span id="rec-change">$0</span></div>
+                </div>
+                <div class="text-center pt-3 border-t border-dashed border-slate-300">
+                    <p class="text-[10px] text-slate-500">*** 廚房正在為您製作餐點 ***</p>
+                    <div class="text-base tracking-widest mt-1 text-slate-800 font-bold">||| | |||| || | |||||</div>
+                    <p class="text-[9px] text-slate-400" id="receipt-no">ORD-00000000</p>
+                </div>
+            </div>
+
+            <div class="mt-5 flex w-full space-x-2">
+                <button onclick="window.print()" class="flex-1 bg-slate-800 hover:bg-slate-900 text-white py-2.5 rounded-xl text-xs font-semibold transition shadow">🖨️ 列印收據</button>
+                <button onclick="closeReceiptModal()" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-xl text-xs font-semibold transition shadow">完成並下一筆</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript 業務邏輯 -->
+    <script>
+        const CONFIG = {
+            apiKey: "$2a$10$Q3e6T7l53HKgJr3pc5tuW.5dTGTAyi6948TrSpoe7mNIZm6kaRMbm",
+            binId: "6ada3777ac6210605a49804e"
+        };
+
+        let products = [];
+        let orders = [];
+        let cart = [];
+        let currentPaymentMethod = 'cash';
+        let shiftTotalSales = 0;
+
+        function playScanBeep() {
+            try {
+                const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(1200, audioCtx.currentTime);
+                gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.08);
+            } catch (e) {}
+        }
+
+        window.onload = async () => {
+            await fetchDataFromCloud();
+            renderCart();
+        };
+
+        async function fetchDataFromCloud() {
+            updateStatus('同步中...', 'bg-yellow-500 text-white');
+            try {
+                const res = await fetch(`https://api.jsonbin.io/v3/b/${CONFIG.binId}/latest`, {
+                    headers: { 'X-Master-Key': CONFIG.apiKey }
+                });
+                if (!res.ok) throw new Error('API 請求失敗');
+                const data = await res.json();
+                
+                const rawRecord = data.record;
+                if (rawRecord && typeof rawRecord === 'object') {
+                    products = Array.isArray(rawRecord.products) ? rawRecord.products : (Array.isArray(rawRecord) ? rawRecord : []);
+                    orders = Array.isArray(rawRecord.orders) ? rawRecord.orders : [];
+                } else {
+                    products = [];
+                    orders = [];
+                }
+                
+                updateStatus('線上運作中', 'bg-emerald-500 text-white');
+                renderProducts();
+            } catch (err) {
+                console.warn('雲端同步失敗:', err);
+                updateStatus('離線模式', 'bg-red-500 text-white');
+                useMockProducts();
+            }
+        }
+
+        function useMockProducts() {
+            products = [{ id: "P001", sku: "1001", name: "美式咖啡 (離線備用)", price: 65, stock: 50 }];
+            orders = [];
+            renderProducts();
+        }
+
+        function updateStatus(text, className) {
+            const el = document.getElementById('sync-status');
+            if (el) {
+                el.innerText = text;
+                el.className = `text-xs px-2.5 py-1 rounded font-medium ${className}`;
+            }
+        }
+
+        function renderProducts(filteredProducts = null) {
+            const grid = document.getElementById('product-grid');
+            const list = filteredProducts || products;
+            
+            if (!grid) return;
+
+            if (!list || list.length === 0) {
+                grid.innerHTML = `<div class="col-span-full text-center text-slate-400 py-10">目前沒有商品，請至後台新增商品</div>`;
+                return;
+            }
+
+            grid.innerHTML = list.map(p => `
+                <div onclick="addToCart('${p.id || p.sku}')" 
+                     class="bg-slate-50 hover:bg-blue-50 border border-slate-200 hover:border-blue-300 rounded-xl p-3 cursor-pointer flex flex-col justify-between transition group shadow-sm">
+                    <div>
+                        <div class="text-[11px] text-slate-400 mb-1 font-mono">SKU: ${p.sku || '-'}</div>
+                        <div class="font-bold text-slate-800 text-sm group-hover:text-blue-600 line-clamp-2">${p.name || '未命名商品'}</div>
+                    </div>
+                    <div class="mt-3 flex justify-between items-end">
+                        <span class="text-xs ${p.stock > 5 ? 'text-slate-500' : 'text-red-500 font-bold'}">庫存: ${p.stock ?? 0}</span>
+                        <span class="font-extrabold text-blue-600 text-base">$${p.price ?? 0}</span>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function renderCart() {
+            const container = document.getElementById('cart-list');
+            if (!container) return;
+            
+            if (cart.length === 0) {
+                container.innerHTML = `<p class="text-slate-400 text-center py-10 text-sm">購物車是空的</p>`;
+                document.getElementById('cart-count').innerText = `0 項 (0 件)`;
+                document.getElementById('cart-tax').innerText = `$0`;
+                document.getElementById('cart-total').innerText = 0;
+                document.getElementById('checkout-btn').disabled = true;
+                return;
+            }
+
+            let total = 0;
+            let count = 0;
+            let totalQty = 0;
+
+            container.innerHTML = cart.map(item => {
+                const subtotal = item.price * item.quantity;
+                total += subtotal;
+                count += 1;
+                totalQty += item.quantity;
+
+                return `
+                    <div class="py-2.5 flex justify-between items-center text-sm">
+                        <div class="flex-1 pr-2">
+                            <div class="font-semibold text-slate-700">${item.name}</div>
+                            <div class="text-xs text-slate-400">$${item.price} x ${item.quantity}</div>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <span class="font-bold text-slate-800">$${subtotal}</span>
+                            <div class="flex items-center border rounded-lg border-slate-200 bg-slate-50 overflow-hidden">
+                                <button onclick="updateQty('${item.id}', -1)" class="px-2 py-0.5 text-slate-600 hover:bg-slate-200 transition">-</button>
+                                <span class="px-1.5 text-xs font-semibold">${item.quantity}</span>
+                                <button onclick="updateQty('${item.id}', 1)" class="px-2 py-0.5 text-slate-600 hover:bg-slate-200 transition">+</button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            const tax = Math.round(total * 0.05);
+
+            document.getElementById('cart-count').innerText = `${count} 項 (${totalQty} 件)`;
+            document.getElementById('cart-tax').innerText = `$${tax}`;
+            document.getElementById('cart-total').innerText = total;
+            document.getElementById('checkout-btn').disabled = false;
+        }
+
+        function addToCart(productId) {
+            const product = products.find(p => (p.id === productId || p.sku === productId));
+            if (!product) return;
+
+            playScanBeep();
+
+            const targetId = product.id || product.sku;
+            const existing = cart.find(item => item.id === targetId);
+            const currentQtyInCart = existing ? existing.quantity : 0;
+
+            if (currentQtyInCart + 1 > product.stock) {
+                alert(`庫存不足！剩餘庫存: ${product.stock}`);
+                return;
+            }
+
+            if (existing) {
+                existing.quantity += 1;
+            } else {
+                cart.push({ id: targetId, name: product.name, price: product.price, quantity: 1 });
+            }
+            renderCart();
+        }
+
+        function updateQty(productId, change) {
+            const item = cart.find(i => i.id === productId);
+            const product = products.find(p => (p.id === productId || p.sku === productId));
+            if (!item || !product) return;
+
+            if (change > 0 && item.quantity + change > product.stock) {
+                alert(`庫存不足！剩餘庫存: ${product.stock}`);
+                return;
+            }
+
+            item.quantity += change;
+            if (item.quantity <= 0) {
+                cart = cart.filter(i => i.id !== productId);
+            }
+            renderCart();
+        }
+
+        function clearCart() {
+            cart = [];
+            renderCart();
+        }
+
+        function handleBarcodeEnter(e) {
+            if (e.key === 'Enter') {
+                searchProduct();
+            }
+        }
+
+        function searchProduct() {
+            const inputEl = document.getElementById('barcode-input');
+            if (!inputEl) return;
+            
+            const query = inputEl.value.trim().toLowerCase();
+            if (!query) {
+                renderProducts();
+                return;
+            }
+
+            const exactMatch = products.find(p => String(p.sku).toLowerCase() === query);
+            if (exactMatch) {
+                playScanBeep();
+                addToCart(exactMatch.id || exactMatch.sku);
+                inputEl.value = '';
+                renderProducts();
+                return;
+            }
+
+            const filtered = products.filter(p => 
+                (p.name && String(p.name).toLowerCase().includes(query)) || 
+                (p.sku && String(p.sku).toLowerCase().includes(query))
+            );
+            renderProducts(filtered);
+        }
+
+        function openCheckoutModal() {
+            if (cart.length === 0) return;
+
+            const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+            document.getElementById('modal-total-display').innerText = total;
+            document.getElementById('cash-tendered').value = total;
+            document.getElementById('invoice-tax-id').value = '';
+            document.getElementById('invoice-type').value = '2';
+            toggleInvoiceField();
+            
+            setPaymentMethod('cash');
+            document.getElementById('checkout-modal').classList.remove('hidden');
+            document.getElementById('cash-tendered').focus();
+        }
+
+        function closeCheckoutModal() {
+            document.getElementById('checkout-modal').classList.add('hidden');
+        }
+
+        function setPaymentMethod(method) {
+            currentPaymentMethod = method;
+            ['cash', 'card', 'mobile'].forEach(m => {
+                const btn = document.getElementById(`pay-${m}-btn`);
+                if (m === method) {
+                    btn.className = "py-2 border-2 border-blue-600 bg-blue-50 text-blue-700 text-xs font-bold rounded-lg transition shadow-sm";
+                } else {
+                    btn.className = "py-2 border-2 border-slate-200 text-slate-600 text-xs font-bold rounded-lg transition";
+                }
+            });
+
+            const cashSec = document.getElementById('cash-section');
+            if (method === 'cash') {
+                cashSec.style.display = 'block';
+                calculateChange();
+            } else {
+                cashSec.style.display = 'none';
+            }
+        }
+
+        function quickCash(amount) {
+            const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+            const tendered = amount === 0 ? total : amount;
+            document.getElementById('cash-tendered').value = tendered;
+            calculateChange();
+        }
+
+        function calculateChange() {
+            const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+            const tendered = Number(document.getElementById('cash-tendered').value) || 0;
+            const change = tendered - total;
+            document.getElementById('change-display').innerText = change >= 0 ? change : 0;
+        }
+
+        function toggleInvoiceField() {
+            const type = document.getElementById('invoice-type').value;
+            const taxField = document.getElementById('tax-id-field');
+            taxField.style.display = type === '3' ? 'block' : 'none';
+        }
+
+        async function processCheckout() {
+            const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+            const tendered = currentPaymentMethod === 'cash' ? (Number(document.getElementById('cash-tendered').value) || total) : total;
+            const change = tendered >= total ? tendered - total : 0;
+
+            if (currentPaymentMethod === 'cash' && tendered < total) {
+                alert("❌ 顧客付現金額不足！");
+                return;
+            }
+
+            for (let item of cart) {
+                let p = products.find(prod => (prod.id === item.id || prod.sku === item.id));
+                if (!p || p.stock < item.quantity) {
+                    alert(`結帳失敗：[${item.name}] 庫存不足！`);
+                    return;
+                }
+            }
+
+            cart.forEach(item => {
+                let p = products.find(prod => (prod.id === item.id || prod.sku === item.id));
+                if (p) p.stock -= item.quantity;
+            });
+
+            closeCheckoutModal();
+            updateStatus('正在送出訂單...', 'bg-yellow-500 text-white');
+
+            const invType = document.getElementById('invoice-type').value;
+            const taxId = document.getElementById('invoice-tax-id').value.trim();
+
+            const newOrder = {
+                orderId: `ORD-${Date.now().toString().slice(-8)}`,
+                time: new Date().toLocaleString(),
+                items: [...cart],
+                total,
+                method: currentPaymentMethod === 'cash' ? '現金支付' : currentPaymentMethod === 'card' ? '信用卡' : '行動支付',
+                tendered,
+                change,
+                invTypeName: invType === '3' ? `三聯式統編: ${taxId || '未填'}` : '二聯式電子發票',
+                status: '未製作完成' // 預設廚房狀態
+            };
+
+            orders.push(newOrder);
+
+            try {
+                // 同步商品庫存與訂單至 JSONBin
+                await fetch(`https://api.jsonbin.io/v3/b/${CONFIG.binId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Master-Key': CONFIG.apiKey
+                    },
+                    body: JSON.stringify({ products, orders })
+                });
+
+                updateStatus('線上運作中', 'bg-emerald-500 text-white');
+                shiftTotalSales += total;
+                document.getElementById('shift-sales').innerText = shiftTotalSales;
+
+                showReceiptModal(newOrder);
+
+            } catch (err) {
+                alert('雲端同步失敗，請檢查網路連線');
+                console.error(err);
+                updateStatus('離線模式', 'bg-red-500 text-white');
+            }
+
+            cart = [];
+            if(document.getElementById('barcode-input')) document.getElementById('barcode-input').value = '';
+            renderProducts();
+            renderCart();
+        }
+
+        function showReceiptModal(order) {
+            document.getElementById('receipt-time').innerText = order.time;
+            document.getElementById('receipt-no').innerText = order.orderId;
+            document.getElementById('receipt-inv-type').innerText = order.invTypeName;
+            document.getElementById('rec-total').innerText = `$${order.total}`;
+            document.getElementById('rec-method').innerText = order.method;
+            document.getElementById('rec-tendered').innerText = `$${order.tendered}`;
+            document.getElementById('rec-change').innerText = `$${order.change}`;
+
+            const listEl = document.getElementById('receipt-items-list');
+            listEl.innerHTML = order.items.map(i => `
+                <div class="flex justify-between text-slate-800">
+                    <span class="truncate max-w-[150px]">${i.name}</span>
+                    <span>${i.quantity}x$${i.price}=$${i.price * i.quantity}</span>
+                </div>
+            `).join('');
+
+            document.getElementById('receipt-modal').classList.remove('hidden');
+        }
+
+        function closeReceiptModal() {
+            document.getElementById('receipt-modal').classList.add('hidden');
+        }
+    </script>
+</body>
+</html>
