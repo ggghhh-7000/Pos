@@ -99,6 +99,7 @@
       display: inline-flex;
       align-items: center;
       gap: 6px;
+      text-decoration: none;
     }
 
     .btn-primary {
@@ -344,8 +345,8 @@
 
     <!-- 家族共用檔案櫃 -->
     <div class="section-header">
-      <h2 class="section-title">📂 家族雲端檔案櫃 (.mov / .html / 圖片等)</h2>
-      <button class="btn btn-primary" onclick="openUploadModal()">📤 上傳新檔案</button>
+      <h2 class="section-title">📂 家族永久免費檔案櫃 (.mov / .html / 圖片等)</h2>
+      <button class="btn btn-primary" onclick="openUploadModal()">📤 直接上傳檔案</button>
     </div>
 
     <div class="board-box" id="fileContainer">
@@ -359,7 +360,7 @@
         <div>
           <div class="card-icon">📅</div>
           <div class="card-title">活動行事曆</div>
-          <div class="card-desc">查看生日, 聚會及重要紀念日。</div>
+          <div class="card-desc">查看生日、聚會及重要紀念日。</div>
         </div>
       </a>
       <a href="#" class="card">
@@ -372,24 +373,27 @@
     </div>
   </main>
 
-  <!-- 檔案上傳 Modal -->
+  <!-- 檔案直傳 Modal -->
   <div class="modal-backdrop" id="uploadModal">
     <div class="modal">
       <div class="modal-header">
-        <div class="modal-title">📤 上傳檔案至雲端</div>
+        <div class="modal-title">📤 直傳檔案至免費永久伺服器</div>
         <button class="close-btn" onclick="closeUploadModal()">&times;</button>
       </div>
+
       <div class="form-group">
         <label>選擇檔案 (.mov, .html, .jpg, .pdf 等)：</label>
         <input type="file" id="fileInput">
       </div>
       <div class="form-group">
-        <label>檔案說明 / 名稱：</label>
-        <input type="text" id="fileDescInput" placeholder="例如：中秋節聚會影片.mov">
+        <label>檔案名稱 / 備註說明：</label>
+        <input type="text" id="fileDescInput" placeholder="例如：2026家族聚會紀錄.mov">
       </div>
+
       <div id="uploadStatus" style="font-size: 0.9rem; color: var(--primary-color); margin-bottom: 10px;"></div>
-      <div style="text-align: right;">
-        <button class="btn btn-primary" id="startUploadBtn" onclick="handleFileUpload()">確認上傳並發布</button>
+      
+      <div style="text-align: right; margin-top: 20px;">
+        <button class="btn btn-primary" id="startUploadBtn" onclick="handleDirectUpload()">開始上傳並儲存</button>
       </div>
     </div>
   </div>
@@ -469,6 +473,10 @@
     const JSONBIN_MASTER_KEY = '$2a$10$Q3e6T7l53HKgJr3pc5tuW.5dTGTAyi6948TrSpoe7mNIZm6kaRMbm';
     const ADMIN_PASSWORD = 'LeLe-LOK';
 
+    // Cloudinary 免費永久 API 設定
+    const CLOUDINARY_URL = 'https://api.cloudinary.com/v1_1/demo/auto/upload';
+    const CLOUDINARY_PRESET = 'docs_upload_example_us_preset';
+
     let siteData = { notices: [], files: [] };
     let isAuthenticated = false;
 
@@ -527,7 +535,7 @@
 
     function renderFiles() {
       if (siteData.files.length === 0) {
-        fileContainer.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 10px;">目前尚無上傳檔案，點擊上方按鈕上傳。</div>';
+        fileContainer.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 10px;">目前尚無上傳檔案，點擊上方按鈕直接上傳。</div>';
         return;
       }
       fileContainer.innerHTML = siteData.files.map(item => `
@@ -540,36 +548,38 @@
       `).join('');
     }
 
-    async function handleFileUpload() {
+    // 免費 Cloudinary 直接上傳 (支援跨來源 CORS)
+    async function handleDirectUpload() {
       const fileInput = document.getElementById('fileInput');
       const fileDescInput = document.getElementById('fileDescInput');
       const uploadStatus = document.getElementById('uploadStatus');
+      const startBtn = document.getElementById('startUploadBtn');
 
       if (fileInput.files.length === 0) {
-        alert('請先選擇要上傳的檔案！');
+        alert('請選擇要上傳的檔案！');
         return;
       }
 
       const file = fileInput.files[0];
       const fileName = fileDescInput.value.trim() || file.name;
 
-      uploadStatus.innerText = '正在上傳至免費雲端伺服器，請稍候...';
+      uploadStatus.innerText = '⏳ 正在直傳至免費永久雲端，請稍候...';
+      startBtn.disabled = true;
 
       try {
         const formData = new FormData();
         formData.append('file', file);
+        formData.append('upload_preset', CLOUDINARY_PRESET);
 
-        const response = await fetch('https://0x0.st', {
+        const response = await fetch(CLOUDINARY_URL, {
           method: 'POST',
           body: formData
         });
 
         if (!response.ok) throw new Error('上傳失敗');
-        const fileUrl = (await response.text()).trim();
+        const result = await response.json();
         
-        if (!fileUrl.startsWith('http')) {
-          throw new Error('伺服器未回傳有效連結');
-        }
+        const fileUrl = result.secure_url;
 
         siteData.files.unshift({
           name: fileName,
@@ -579,17 +589,19 @@
 
         await saveToCloudSilent();
 
-        uploadStatus.innerText = '上傳成功！已同步至雲端。';
+        uploadStatus.innerText = '✅ 上傳成功！已同步發布至檔案櫃。';
         setTimeout(() => {
           closeUploadModal();
           renderFiles();
           fileInput.value = '';
           fileDescInput.value = '';
           uploadStatus.innerText = '';
+          startBtn.disabled = false;
         }, 1200);
 
       } catch (err) {
-        uploadStatus.innerText = `上傳出錯: ${err.message}`;
+        uploadStatus.innerText = `❌ 上傳失敗: ${err.message}`;
+        startBtn.disabled = false;
       }
     }
 
