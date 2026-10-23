@@ -34,7 +34,6 @@
       line-height: 1.6;
     }
 
-    /* Header */
     header {
       background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
       color: white;
@@ -67,14 +66,12 @@
       font-weight: 300;
     }
 
-    /* Main Container */
     main {
       max-width: 1080px;
       margin: -40px auto 60px;
       padding: 0 20px;
     }
 
-    /* Section Headings */
     .section-header {
       display: flex;
       justify-content: space-between;
@@ -132,7 +129,6 @@
       background-color: #c53030;
     }
 
-    /* Notice Board Section */
     .notice-board {
       background: var(--card-bg);
       border-radius: var(--border-radius);
@@ -174,7 +170,6 @@
       white-space: nowrap;
     }
 
-    /* Quick Links Grid */
     .grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
@@ -235,7 +230,6 @@
       color: var(--text-muted);
     }
 
-    /* Modal Styling */
     .modal-backdrop {
       position: fixed;
       top: 0;
@@ -317,14 +311,12 @@
       flex-grow: 1;
     }
 
-    .status-msg {
+    .status-error {
+      color: #e53e3e;
       font-size: 0.85rem;
       margin-top: 6px;
     }
-    .status-success { color: #38a169; }
-    .status-error { color: #e53e3e; }
 
-    /* Footer */
     footer {
       text-align: center;
       padding: 30px 20px;
@@ -348,7 +340,6 @@
 </head>
 <body>
 
-  <!-- Header Section -->
   <header>
     <div class="header-content">
       <div class="logo">LOK 家族資訊網</div>
@@ -356,9 +347,7 @@
     </div>
   </header>
 
-  <!-- Main Content Area -->
   <main>
-    <!-- Notice Board -->
     <div class="section-header">
       <h2 class="section-title">📌 最新公告</h2>
       <button class="btn btn-outline" id="openAdminBtn">⚙️ 後台管理</button>
@@ -370,7 +359,6 @@
       </div>
     </div>
 
-    <!-- Family Services & Links -->
     <h2 class="section-title">🚀 家族快捷服務</h2>
     <div class="grid">
       <a href="#" class="card">
@@ -407,34 +395,32 @@
     </div>
   </main>
 
-  <!-- Admin Modal -->
+  <div class="modal-backdrop" id="loginModal">
+    <div class="modal" style="max-width: 400px;">
+      <div class="modal-header">
+        <div class="modal-title">🔐 管理員登入</div>
+        <button class="close-btn" onclick="closeLoginModal()">&times;</button>
+      </div>
+      <div class="form-group">
+        <label>請輸入後台登入碼：</label>
+        <input type="password" id="adminPasswordInput" placeholder="請輸入密碼">
+        <div id="loginErrorMsg" class="status-error"></div>
+      </div>
+      <div style="text-align: right; margin-top: 15px;">
+        <button class="btn btn-primary" id="loginSubmitBtn">驗證登入</button>
+      </div>
+    </div>
+  </div>
+
   <div class="modal-backdrop" id="adminModal">
     <div class="modal">
       <div class="modal-header">
         <div class="modal-title">⚙️ 後台公告管理</div>
-        <button class="close-btn" id="closeAdminBtn">&times;</button>
+        <button class="close-btn" onclick="closeAdminModal()">&times;</button>
       </div>
 
-      <!-- JSONBin Settings -->
-      <details open style="margin-bottom: 20px; border: 1px solid #e2e8f0; padding: 12px; border-radius: 8px;">
-        <summary style="font-weight: bold; cursor: pointer; color: var(--primary-color);">🔗 JSONBin API 設定</summary>
-        <div style="margin-top: 12px;">
-          <div class="form-group">
-            <label>Bin ID:</label>
-            <input type="text" id="binIdInput" placeholder="例如：65123456789abcdef">
-          </div>
-          <div class="form-group">
-            <label>Master Key ($2a$10$...):</label>
-            <input type="password" id="apiKeyInput" placeholder="輸入您的 jsonbin Master Key">
-          </div>
-          <button class="btn btn-primary" id="saveApiBtn">儲存金鑰並重新載入</button>
-          <div id="apiStatusMsg" class="status-msg"></div>
-        </div>
-      </details>
-
-      <!-- Add New Notice -->
-      <div style="margin-bottom: 20px; border: 1px solid #e2e8f0; padding: 12px; border-radius: 8px;">
-        <h3 style="font-size: 1rem; margin-bottom: 10px; color: var(--primary-color);">➕ 新增公告事項</h3>
+      <div style="margin-bottom: 20px; border: 1px solid #e2e8f0; padding: 16px; border-radius: 8px; background: #fafafa;">
+        <h3 style="font-size: 1rem; margin-bottom: 12px; color: var(--primary-color);">➕ 新增公告事項</h3>
         <div class="form-group">
           <label>標籤類別：</label>
           <select id="newNoticeTag">
@@ -448,81 +434,60 @@
           <label>公告內容：</label>
           <textarea id="newNoticeText" rows="3" placeholder="請輸入公告內容..."></textarea>
         </div>
-        <button class="btn btn-primary" id="addNoticeBtn">新增公告</button>
+        <button class="btn btn-primary" id="addNoticeBtn">新增至清單</button>
       </div>
 
-      <!-- Current Notices List -->
       <div>
         <h3 style="font-size: 1rem; margin-bottom: 10px; color: var(--primary-color);">📋 目前公告列表</h3>
-        <div id="adminNoticeList">
-          <!-- Administrative Notice Items injected here -->
-        </div>
+        <div id="adminNoticeList"></div>
       </div>
 
-      <div style="margin-top: 20px; text-align: right;">
+      <div style="margin-top: 24px; display: flex; justify-content: space-between; align-items: center;">
+        <button class="btn btn-outline" onclick="closeAdminModal()">關閉</button>
         <button class="btn btn-primary" id="syncToCloudBtn" style="background-color: #38a169;">☁️ 儲存並同步至雲端</button>
       </div>
     </div>
   </div>
 
-  <!-- Footer -->
   <footer>
     <p>© LOK Family. All Rights Reserved.</p>
   </footer>
 
   <script>
-    // Local memory storage for notices
+    const JSONBIN_BIN_ID = '6ada3777ac6210605a49804e';
+    const JSONBIN_MASTER_KEY = '$2a$10$Q3e6T7l53HKgJr3pc5tuW.5dTGTAyi6948TrSpoe7mNIZm6kaRMbm';
+    const ADMIN_PASSWORD = 'LeLe-LOK';
+
     let currentNotices = [];
+    let isAuthenticated = false;
 
-    // Keys stored in LocalStorage for convenience
-    let binId = localStorage.getItem('lok_jsonbin_id') || '';
-    let apiKey = localStorage.getItem('lok_jsonbin_key') || '';
-
-    // DOM Elements
     const noticeContainer = document.getElementById('noticeContainer');
-    const adminModal = document.getElementById('adminModal');
     const openAdminBtn = document.getElementById('openAdminBtn');
-    const closeAdminBtn = document.getElementById('closeAdminBtn');
-    const binIdInput = document.getElementById('binIdInput');
-    const apiKeyInput = document.getElementById('apiKeyInput');
-    const saveApiBtn = document.getElementById('saveApiBtn');
-    const apiStatusMsg = document.getElementById('apiStatusMsg');
+    const loginModal = document.getElementById('loginModal');
+    const adminModal = document.getElementById('adminModal');
+    const adminPasswordInput = document.getElementById('adminPasswordInput');
+    const loginSubmitBtn = document.getElementById('loginSubmitBtn');
+    const loginErrorMsg = document.getElementById('loginErrorMsg');
     const addNoticeBtn = document.getElementById('addNoticeBtn');
     const syncToCloudBtn = document.getElementById('syncToCloudBtn');
 
-    // Default Fallback Data if no cloud connected
-    const fallbackNotices = [
-      { id: '1', tag: '活動', text: '歡迎來到 LOK 家族首頁！請點擊右上角「後台管理」設定 jsonbin 連線。', date: new Date().toISOString().split('T')[0] }
-    ];
-
-    // Initial Load
     window.addEventListener('DOMContentLoaded', () => {
-      binIdInput.value = binId;
-      apiKeyInput.value = apiKey;
-
-      if (binId && apiKey) {
-        fetchNoticesFromCloud();
-      } else {
-        currentNotices = fallbackNotices;
-        renderNotices();
-      }
+      fetchNoticesFromCloud();
     });
 
-    // Fetch Notices from JSONBin.io
     async function fetchNoticesFromCloud() {
-      noticeContainer.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 20px;">正在從 jsonbin 載入公告...</div>';
+      noticeContainer.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 20px;">正在讀取最新公告...</div>';
       try {
-        const response = await fetch(`https://api.jsonbin.io/v3/b/${binId}/latest`, {
+        const response = await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}/latest`, {
           method: 'GET',
           headers: {
-            'X-Master-Key': apiKey
+            'X-Master-Key': JSONBIN_MASTER_KEY
           }
         });
 
-        if (!response.ok) throw new Error('無法存取，請檢查 Bin ID 與 Key 設定。');
+        if (!response.ok) throw new Error('讀取失敗，請確認連線。');
 
         const data = await response.json();
-        // Assume structure is { notices: [...] }
         if (data.record && Array.isArray(data.record.notices)) {
           currentNotices = data.record.notices;
         } else if (Array.isArray(data.record)) {
@@ -533,11 +498,10 @@
 
         renderNotices();
       } catch (err) {
-        noticeContainer.innerHTML = `<div style="text-align: center; color: #e53e3e; padding: 20px;">載入失敗：${err.message}</div>`;
+        noticeContainer.innerHTML = `<div style="text-align: center; color: #e53e3e; padding: 20px;">無法讀取公告：${err.message}</div>`;
       }
     }
 
-    // Render Notices to Main Page
     function renderNotices() {
       if (currentNotices.length === 0) {
         noticeContainer.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 20px;">目前尚無公告。</div>';
@@ -553,11 +517,50 @@
       `).join('');
     }
 
-    // Render Admin Notice List in Modal
+    openAdminBtn.addEventListener('click', () => {
+      if (isAuthenticated) {
+        openAdminPanel();
+      } else {
+        adminPasswordInput.value = '';
+        loginErrorMsg.innerText = '';
+        loginModal.style.display = 'flex';
+        adminPasswordInput.focus();
+      }
+    });
+
+    loginSubmitBtn.addEventListener('click', handleLogin);
+    adminPasswordInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') handleLogin();
+    });
+
+    function handleLogin() {
+      const inputPass = adminPasswordInput.value;
+      if (inputPass === ADMIN_PASSWORD) {
+        isAuthenticated = true;
+        closeLoginModal();
+        openAdminPanel();
+      } else {
+        loginErrorMsg.innerText = '登入碼錯誤！請重新輸入。';
+      }
+    }
+
+    function closeLoginModal() {
+      loginModal.style.display = 'none';
+    }
+
+    function openAdminPanel() {
+      renderAdminNoticeList();
+      adminModal.style.display = 'flex';
+    }
+
+    function closeAdminModal() {
+      adminModal.style.display = 'none';
+    }
+
     function renderAdminNoticeList() {
       const adminNoticeList = document.getElementById('adminNoticeList');
       if (currentNotices.length === 0) {
-        adminNoticeList.innerHTML = '<div style="color: var(--text-muted); font-size: 0.9rem;">目前沒有任何公告</div>';
+        adminNoticeList.innerHTML = '<div style="color: var(--text-muted); font-size: 0.9rem; text-align: center; padding: 10px;">目前沒有任何公告</div>';
         return;
       }
 
@@ -573,7 +576,6 @@
       `).join('');
     }
 
-    // Add New Notice
     addNoticeBtn.addEventListener('click', () => {
       const tag = document.getElementById('newNoticeTag').value;
       const text = document.getElementById('newNoticeText').value.trim();
@@ -596,36 +598,30 @@
       renderNotices();
     });
 
-    // Delete Notice
     window.deleteNotice = function(index) {
       currentNotices.splice(index, 1);
       renderAdminNoticeList();
       renderNotices();
     };
 
-    // Sync Data to JSONBin.io Cloud
     syncToCloudBtn.addEventListener('click', async () => {
-      if (!binId || !apiKey) {
-        alert('請先填寫並儲存 Bin ID 與 Master Key！');
-        return;
-      }
-
       syncToCloudBtn.innerText = '同步中...';
       syncToCloudBtn.disabled = true;
 
       try {
-        const response = await fetch(`https://api.jsonbin.io/v3/b/${binId}`, {
+        const response = await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
-            'X-Master-Key': apiKey
+            'X-Master-Key': JSONBIN_MASTER_KEY
           },
           body: JSON.stringify({ notices: currentNotices })
         });
 
-        if (!response.ok) throw new Error('同步失敗，請檢查權限或 Key。');
+        if (!response.ok) throw new Error('同步失敗，請確認權限。');
 
         alert('成功更新並同步至 jsonbin！');
+        closeAdminModal();
       } catch (err) {
         alert(`同步出錯: ${err.message}`);
       } finally {
@@ -634,33 +630,6 @@
       }
     });
 
-    // Save API Settings
-    saveApiBtn.addEventListener('click', () => {
-      binId = binIdInput.value.trim();
-      apiKey = apiKeyInput.value.trim();
-
-      localStorage.setItem('lok_jsonbin_id', binId);
-      localStorage.setItem('lok_jsonbin_key', apiKey);
-
-      apiStatusMsg.className = 'status-msg status-success';
-      apiStatusMsg.innerText = '金鑰已儲存！正在重新載入資料...';
-
-      if (binId && apiKey) {
-        fetchNoticesFromCloud();
-      }
-    });
-
-    // Modal Visibility Control
-    openAdminBtn.addEventListener('click', () => {
-      renderAdminNoticeList();
-      adminModal.style.display = 'flex';
-    });
-
-    closeAdminBtn.addEventListener('click', () => {
-      adminModal.style.display = 'none';
-    });
-
-    // Helper: Utility to prevent XSS
     function escapeHtml(str) {
       if (!str) return '';
       return str.replace(/&/g, "&amp;")
